@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
 <style>
 /* Layout: kopfzeile mit grossem Titel, Inhalt als Karten, feste Tab-Leiste unten, runder Plus-Knopf, Bottom-Sheet zum Erfassen */
-:root{--bg:#f8f5f0;--card:#fffdfa;--text:#2e2924;--muted:#8a8076;--accent:#8c6d3f;--on-accent:#fff;--soft:#f3e9d6;--line:#ece5da;--red:#c9645a;--amber:#d09a3c;--green:#5b8c71;--shadow:0 1px 2px rgba(80,60,30,.05),0 8px 22px rgba(80,60,30,.06);--safe-top:env(safe-area-inset-top,0px);--serif:'Cormorant Garamond',Georgia,'Times New Roman',serif}
+:root{--bg:#f8f5f0;--card:#fffdfa;--text:#2e2924;--muted:#8a8076;--accent:#8c6d3f;--on-accent:#fff;--soft:#f3e9d6;--line:#ece5da;--red:#c9645a;--amber:#d09a3c;--green:#3f9468;--shadow:0 1px 2px rgba(80,60,30,.05),0 8px 22px rgba(80,60,30,.06);--safe-top:env(safe-area-inset-top,0px);--serif:'Cormorant Garamond',Georgia,'Times New Roman',serif}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1815;--card:#252019;--text:#f1eadf;--muted:#a59b8e;--line:#39322a;--accent:#cfae72;--on-accent:#1f1a14;--soft:#3a3227;--shadow:none;color-scheme:dark}}
 :root[data-theme="dark"]{--bg:#1b1815;--card:#252019;--text:#f1eadf;--muted:#a59b8e;--line:#39322a;--accent:#cfae72;--on-accent:#1f1a14;--soft:#3a3227;--shadow:none;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -160,6 +160,47 @@ h1{margin:0;font-family:var(--serif);font-size:36px;font-weight:600;line-height:
 
 h1,.hero b,.focus b,.mood button,.shead b,.hrow .hd b,.empty b{font-variant-numeric:lining-nums}
 
+/* Auswertung der Gewohnheiten */
+.hnum{font-size:48px;font-weight:600;line-height:1;letter-spacing:-.01em;font-variant-numeric:lining-nums}
+.hnum span{font-size:22px;font-weight:500;margin-left:2px;color:var(--muted)}
+.bars{display:flex;gap:8px;margin-top:16px}
+.bcol{flex:1;min-width:0;border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.btrack{display:flex;align-items:flex-end;justify-content:center;width:100%;height:84px;border-bottom:1px solid var(--line)}
+.btrack i{display:block;width:100%;max-width:24px;background:var(--green);border-radius:4px 4px 0 0}
+.blab{font-size:11px;color:var(--muted)}
+.bcol.today .blab{color:var(--accent);font-weight:700}
+.bcol.dim .btrack i{background:var(--muted);opacity:.38}
+.bval{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;min-height:14px}
+.tip{min-height:20px;margin-top:10px;font-size:13px;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.tile{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:12px 12px 13px;min-width:0}
+.tile small{display:block;font-size:12px;color:var(--muted)}
+.tile b{display:block;margin-top:2px;font-size:26px;font-weight:600;line-height:1.15;font-variant-numeric:lining-nums}
+.tile b span{font-size:13px;font-weight:500;color:var(--muted)}
+.hmap{display:grid;grid-template-columns:20px repeat(12,1fr);gap:3px;align-items:center}
+.hmm{font-size:11px;color:var(--muted);white-space:nowrap;align-self:end;padding-bottom:2px}
+.hmw{font-size:11px;color:var(--muted)}
+.hm{display:block;width:100%;aspect-ratio:1;border:0;padding:0;border-radius:5px;background:var(--line)}
+.hm.on{background:var(--green)}
+.hm.pre{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.hm.fut{background:transparent;box-shadow:inset 0 0 0 1px var(--line);opacity:.45}
+.hm.td{outline:2px solid var(--accent);outline-offset:1px}
+.leg{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted)}
+.leg span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:4px;background:var(--line);display:inline-block}
+.sw.on{background:var(--green)}
+.cap{font-size:13px;color:var(--muted);margin:2px 0 0}
+details.tbl{margin-top:16px}
+details.tbl summary{cursor:pointer;color:var(--accent);font-size:14px;padding:6px 0}
+details.tbl table{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+details.tbl th{text-align:left;font-weight:600;font-size:12px;color:var(--muted);padding:6px 4px;border-bottom:1px solid var(--line)}
+details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.hab .foot{margin-top:10px;font-size:12.5px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap}
+.hab .foot i{font-style:normal;opacity:.5}
+.hab .chartb{border:0;background:var(--bg);color:var(--muted);border-radius:10px;width:34px;height:34px;display:grid;place-items:center;flex:none}
+.hab .top{align-items:center}
+.hab .tr{display:flex;align-items:center;gap:8px}
+
 /* Hinweis (Erinnerung) */
 #banner{margin-top:6px}
 .al{display:flex;gap:8px;align-items:center;background:var(--soft);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:10px 12px;margin:8px 0}
@@ -265,6 +306,7 @@ up:'<path d="M12 16V4M7 8l5-5 5 5M4 20h16"/>',
 copy:'<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>',
 trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
 x:'<path d="M6 6l12 12M18 6L6 18"/>',
+chart:'<path d="M5 20v-7M12 20V5M19 20v-11"/>',
 moon:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',
 book:'<path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/>',
 shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>'
@@ -414,7 +456,7 @@ function applyImport(){
 /* ---------- Navigation ---------- */
 let view='home',taskSeg='open',catFilter='',weekOffset=0,addDay=null,openNote=null,noteQ='';
 const TABS=[['home','Heute','sun'],['tasks','Aufgaben','list'],['week','Woche','cal'],['habits','Gewohnheiten','repeat'],['more','Mehr','more']];
-const group=v=>(v==='shop'||v==='notes'||v==='history')?'more':v==='review'?'home':v;
+const group=v=>(v==='shop'||v==='notes'||v==='history')?'more':v==='review'?'home':v==='hstats'?'habits':v;
 function setTop(title,sub,o={}){
   $('crumb').innerHTML=o.back?`<button class="back" data-back="1">${ic('chevL',18,2)}${o.back===true?'Mehr':o.back}</button>`:'';
   $('h1').textContent=title;$('sub').textContent=sub||'';$('sub').hidden=!sub;
@@ -431,7 +473,7 @@ function fabInfo(){
 }
 function render(){
   const f=fabInfo();$('fab').hidden=!f;if(f){$('fab').innerHTML=ic('plus',28,2.2);$('fab').setAttribute('aria-label',f[1])}
-  ({home:renderHome,tasks:renderTasks,week:renderWeek,habits:renderHabits,more:renderMore,shop:renderShop,notes:renderNotes,review:renderReview,history:renderHistory})[view]();
+  ({home:renderHome,tasks:renderTasks,week:renderWeek,habits:renderHabits,more:renderMore,shop:renderShop,notes:renderNotes,review:renderReview,history:renderHistory,hstats:renderHstats})[view]();
   renderBar();renderBanner();
 }
 
@@ -626,17 +668,102 @@ function renderWeek(){
 }
 
 /* ---------- Gewohnheiten ---------- */
+/* Berechnung */
+const WDL=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'],WDS2=['Mo','Di','Mi','Do','Fr','Sa','So'];
+const dowIdx=d=>(new Date(d+'T00:00').getDay()+6)%7;
+const fmtFull=d=>new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'});
+function habitStart(h){const a=[];if(h.id>1e12)a.push(iso(new Date(h.id)));if(h.days.length)a.push([...h.days].sort()[0]);return a.sort()[0]||''}
+function habitRate(h,n){
+  const st=habitStart(h);if(!st)return null;const set=new Set(h.days);let tot=0,done=0;
+  for(let i=0;i<n;i++){const d=addDays(today(),-i);if(d<st)break;tot++;if(set.has(d))done++}
+  return tot?{pct:Math.round(done/tot*100),done,tot}:null;
+}
+function longestStreak(h){const ds=[...new Set(h.days)].sort();let best=0,cur=0,prev='';for(const d of ds){cur=(prev&&addDays(prev,1)===d)?cur+1:1;if(cur>best)best=cur;prev=d}return best}
+function overallDay(d){let poss=0,done=0;habits.forEach(h=>{const st=habitStart(h);if(st&&d>=st){poss++;if(h.days.includes(d))done++}});return{poss,done}}
+function overallRate(n,skip){let poss=0,done=0;for(let i=skip;i<skip+n;i++){const o=overallDay(addDays(today(),-i));poss+=o.poss;done+=o.done}return poss?Math.round(done/poss*100):null}
+
+/* Diagramm: Quote der letzten 7 Tage */
+function weekCard(){
+  const t=today(),cur=overallRate(7,0),prev=overallRate(7,7);
+  const days=[...Array(7)].map((_,i)=>addDays(t,i-6));
+  const delta=cur!==null&&prev!==null?cur-prev:null;
+  const bars=days.map(d=>{
+    const o=overallDay(d),pct=o.poss?Math.round(o.done/o.poss*100):0;
+    const tip=fmtFull(d)+' · '+(o.poss?o.done+' von '+o.poss+' geschafft ('+pct+' %)':'keine Daten');
+    return `<button class="bcol ${d===t?'today':''}" data-tip="${tip}" data-tt="tip1" title="${tip}" aria-label="${tip}"><span class="btrack"><i style="height:${pct}%"></i></span><span class="blab">${WDS2[dowIdx(d)]}</span></button>`;
+  }).join('');
+  return `<div class="card"><div class="meta">Letzte 7 Tage</div>
+    <div class="hnum" style="margin-top:6px">${cur===null?'–':cur+'<span>%</span>'}</div>
+    <div class="meta" style="margin-top:4px">${cur===null?'Noch keine Daten':'aller Gewohnheiten geschafft'}${delta!==null?` <i>·</i> ${delta>0?'+':''}${delta} Punkte zur Vorwoche`:''}</div>
+    <div class="bars" role="group" aria-label="Quote pro Tag, letzte 7 Tage">${bars}</div>
+    <div class="tip" id="tip1" aria-live="polite">Tippe auf einen Balken für Details.</div></div>`;
+}
 function renderHabits(){
   const t=today();
   const week=[...Array(7)].map((_,i)=>addDays(t,i-6));
   const doneH=habits.filter(h=>h.days.includes(t)).length;
   setTop('Gewohnheiten',habits.length?doneH+' von '+habits.length+' heute erledigt':'');
-  $('view').innerHTML=habits.length?habits.map(h=>{
-    const n=streak(h);
+  if(!habits.length){$('view').innerHTML=`<div class="empty"><b>Noch keine Gewohnheiten</b>Tippe auf das Plus, zum Beispiel für „Wasser trinken“.</div>`;return}
+  $('view').innerHTML=weekCard()+`<div class="sec"><h2>Deine Gewohnheiten</h2></div>`+habits.map(h=>{
+    const n=streak(h),r30=habitRate(h,30);
     return `<div class="hab"><div class="top"><button class="name" data-hedit="${h.id}">${esc(h.name)}</button>
-      ${n?`<span class="streak">${ic('flame',15,2)}${n} ${n===1?'Tag':'Tage'}</span>`:''}</div>
-      <div class="days">${week.map(d=>`<div class="day ${d===t?'today':''}"><button class="${h.days.includes(d)?'on':''}" data-hday="${h.id}|${d}" aria-label="${new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'long'})}">${h.days.includes(d)?ic('check',16,2.6):''}</button><span>${new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'short'})}</span></div>`).join('')}</div></div>`}).join(''):
-    `<div class="empty"><b>Noch keine Gewohnheiten</b>Tippe auf das Plus, zum Beispiel für „Wasser trinken“.</div>`;
+      <div class="tr">${n?`<span class="streak">${ic('flame',15,2)}${n} ${n===1?'Tag':'Tage'}</span>`:''}<button class="chartb" data-hstats="${h.id}" aria-label="Auswertung von ${esc(h.name)}">${ic('chart',18,2)}</button></div></div>
+      <div class="days">${week.map(d=>`<div class="day ${d===t?'today':''}"><button class="${h.days.includes(d)?'on':''}" data-hday="${h.id}|${d}" aria-label="${new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'long'})}">${h.days.includes(d)?ic('check',16,2.6):''}</button><span>${new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'short'})}</span></div>`).join('')}</div>
+      <div class="foot"><span>Rekord ${longestStreak(h)} ${longestStreak(h)===1?'Tag':'Tage'}</span><i>·</i><span>30 Tage: ${r30?r30.pct+' %':'–'}</span></div></div>`}).join('');
+}
+
+/* Auswertung einer Gewohnheit */
+let hsId=null;
+function renderHstats(){
+  const h=habits.find(x=>x.id===hsId);
+  if(!h){view='habits';return renderHabits()}
+  const t=today(),n=streak(h),best=longestStreak(h),set=new Set(h.days),st=habitStart(h),total=set.size;
+  setTop(h.name,'Auswertung',{back:'Gewohnheiten'});
+  const unit=k=>k===1?' Tag':' Tage';
+  const tile=(l,v,u)=>`<div class="tile"><small>${l}</small><b>${v}${u?`<span>${u}</span>`:''}</b></div>`;
+  const r7=habitRate(h,7),r30=habitRate(h,30),r90=habitRate(h,90);
+  let html=`<div class="tiles">${tile('Serie',n,unit(n))}${tile('Rekord',best,unit(best))}${tile('Gesamt',total,unit(total))}</div>`+
+    `<div class="tiles">${tile('7 Tage',r7?r7.pct:'–',r7?' %':'')}${tile('30 Tage',r30?r30.pct:'–',r30?' %':'')}${tile('90 Tage',r90?r90.pct:'–',r90?' %':'')}</div>`;
+  // Kalender der letzten 12 Wochen
+  const m0=addDays(t,-dowIdx(t)),start=addDays(m0,-77);
+  let g='',lastM=-1;
+  for(let w=0;w<12;w++){
+    const d0=addDays(start,w*7),mo=new Date(d0+'T00:00').getMonth();
+    if(mo!==lastM){g+=`<span class="hmm" style="grid-row:1;grid-column:${w+2} / span 3">${new Date(d0+'T00:00').toLocaleDateString('de-DE',{month:'short'})}</span>`;lastM=mo}
+  }
+  ['Mo','','Mi','','Fr','',''].forEach((l,r)=>{g+=`<span class="hmw" style="grid-row:${r+2};grid-column:1">${l}</span>`});
+  for(let w=0;w<12;w++)for(let r=0;r<7;r++){
+    const d=addDays(start,w*7+r),pos=`grid-row:${r+2};grid-column:${w+2}`;
+    if(d>t){g+=`<span class="hm fut" style="${pos}" aria-hidden="true"></span>`;continue}
+    const on=set.has(d),pre=st&&d<st&&!on;
+    const tip=fmtFull(d)+' · '+(on?'geschafft':pre?'vor dem Start':'nicht geschafft');
+    g+=`<button class="hm ${on?'on':pre?'pre':''} ${d===t?'td':''}" style="${pos}" data-tip="${tip}" data-tt="tip2" title="${tip}" aria-label="${tip}"></button>`;
+  }
+  html+=`<div class="sec"><h2>Letzte 12 Wochen</h2></div><div class="card"><div class="hmap" role="group" aria-label="Kalender der letzten 12 Wochen">${g}</div>
+    <div class="leg"><span><i class="sw on"></i>Geschafft</span><span><i class="sw"></i>Nicht geschafft</span></div>
+    <div class="tip" id="tip2" aria-live="polite">Tippe auf ein Feld für Details.</div></div>`;
+  // Wochentage
+  const stat=Array.from({length:7},()=>({tot:0,done:0}));
+  for(let i=0;i<84;i++){const d=addDays(start,i);if(d>t)break;if(!st||d<st)continue;const k=dowIdx(d);stat[k].tot++;if(set.has(d))stat[k].done++}
+  const pc=stat.map(x=>x.tot?Math.round(x.done/x.tot*100):null);
+  const mx=Math.max(...pc.map(x=>x===null?-1:x)),enough=total>=7&&mx>0;
+  const bi=pc.map((x,i)=>x===mx?i:-1).filter(i=>i>=0);
+  const bars=pc.map((v,i)=>{
+    const tip=WDL[i]+' · '+(stat[i].tot?stat[i].done+' von '+stat[i].tot+' Tagen ('+v+' %)':'keine Daten');
+    const hi=enough&&bi.includes(i);
+    return `<button class="bcol ${enough&&!hi?'dim':''}" data-tip="${tip}" data-tt="tip3" title="${tip}" aria-label="${tip}"><span class="bval">${hi&&bi.length<=2?v+' %':''}</span><span class="btrack"><i style="height:${v||0}%"></i></span><span class="blab">${WDS2[i]}</span></button>`;
+  }).join('');
+  const names=bi.map(i=>WDL[i]);
+  const sentence=!enough?'Noch zu wenig Daten für ein Muster.':bi.length===1?`Am besten klappt es am ${names[0]} (${mx} %).`:bi.length<=3?`Am besten klappt es am ${names.slice(0,-1).join(', ')} und ${names[names.length-1]} (${mx} %).`:`An mehreren Wochentagen gleich gut (${mx} %).`;
+  html+=`<div class="sec"><h2>Nach Wochentag</h2></div><div class="card"><p class="cap" style="color:var(--text);margin:0 0 4px">${sentence}</p>
+    <div class="bars" role="group" aria-label="Quote nach Wochentag, letzte 12 Wochen">${bars}</div><div class="tip" id="tip3" aria-live="polite">Tippe auf einen Balken für Details.</div></div>`;
+  // Tabelle
+  html+=`<details class="tbl"><summary>Zahlen als Tabelle</summary><table><thead><tr><th>Zeitraum</th><th>Geschafft</th><th>Quote</th></tr></thead><tbody>`+
+    [['7 Tage',r7],['30 Tage',r30],['90 Tage',r90]].map(([l,r])=>`<tr><td>${l}</td><td>${r?r.done+' von '+r.tot:'–'}</td><td>${r?r.pct+' %':'–'}</td></tr>`).join('')+
+    `</tbody></table><table style="margin-top:12px"><thead><tr><th>Wochentag (12 Wochen)</th><th>Geschafft</th><th>Quote</th></tr></thead><tbody>`+
+    stat.map((x,i)=>`<tr><td>${WDL[i]}</td><td>${x.tot?x.done+' von '+x.tot:'–'}</td><td>${x.tot?pc[i]+' %':'–'}</td></tr>`).join('')+`</tbody></table></details>`;
+  html+=`<button class="btn" data-hedit="${h.id}" style="margin-top:18px">Gewohnheit bearbeiten</button>`;
+  $('view').innerHTML=html;
 }
 
 /* ---------- Tagesrueckblick ---------- */
@@ -811,14 +938,16 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   const D=b.dataset;
   if(b.id==='fab'){const f=fabInfo();if(!f)return;if(f[0]==='note')newNote();else openSheet(f[0]);return}
+  if(D.tip&&D.tt){const el=$(D.tt);if(el)el.textContent=D.tip;return}
   if(D.close){closeSheet();return}
   if(D.tdel){const id=sheet.id;closeSheet();destructive('Aufgabe gelöscht',()=>{tasks=tasks.filter(t=>t.id!=id);saveT()});return}
   if(D.hdel){const id=sheet.id;closeSheet();destructive('Gewohnheit gelöscht',()=>{habits=habits.filter(t=>t.id!=id);saveH()});return}
   if(D.nav){go(D.nav);return}
   if(D.go){go(D.go);return}
-  if(D.back){if(view==='notes'&&openNote!==null){leaveNote();render()}else go(view==='review'?'home':'more');return}
+  if(D.back){if(view==='notes'&&openNote!==null){leaveNote();render()}else go(view==='review'?'home':view==='hstats'?'habits':'more');return}
   if(D.done){toggleTask(D.done)}
   else if(D.edit){openSheet('task',D.edit);return}
+  else if(D.hstats){hsId=+D.hstats;view='hstats';window.scrollTo(0,0)}
   else if(D.mood){draft.mood=+D.mood;$('moodrow').innerHTML=moodRow();return}
   else if(D.rvdone){toggleTask(D.rvdone)}
   else if(D.rvmove){const x=tasks.find(t=>t.id==D.rvmove);if(x){x.date=addDays(today(),1);x.reminded=false;delete x.snoozeUntil;saveT()}}
