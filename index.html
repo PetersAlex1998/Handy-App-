@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4f46e5">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon.svg">
+<title>Mein Alltag</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--text:#1c1c28;--muted:#7a7a8c;--accent:#4f46e5;--line:#e6e7ef;--red:#e5484d;--amber:#f5a524;--green:#2fa36b}
+@media (prefers-color-scheme:dark){:root{--bg:#12121a;--card:#1c1c28;--text:#f0f0f6;--muted:#9a9ab0;--line:#2c2c3c}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,sans-serif;padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+header{padding:calc(16px + env(safe-area-inset-top)) 16px 8px}
+h1{margin:0;font-size:24px}
+.sub{color:var(--muted);font-size:14px}
+nav{display:flex;gap:8px;padding:8px 16px;overflow-x:auto}
+nav button{border:0;background:var(--card);color:var(--text);padding:8px 14px;border-radius:20px;font-size:15px;white-space:nowrap}
+nav button.on{background:var(--accent);color:#fff}
+main{padding:0 16px}
+.item{display:flex;gap:12px;align-items:center;background:var(--card);padding:12px;border-radius:14px;margin:8px 0}
+.item .t{flex:1;min-width:0}
+.item .t div:first-child{word-break:break-word}
+.meta{font-size:12px;color:var(--muted)}
+.meta .over{color:var(--red);font-weight:600}
+.chk{width:26px;height:26px;border-radius:50%;border:2px solid var(--muted);background:none;flex:none;color:#fff;font-size:15px;padding:0}
+.done .chk{background:var(--green);border-color:var(--green)}
+.done .t div:first-child{text-decoration:line-through;color:var(--muted)}
+.p1{border-left:4px solid var(--red)}.p2{border-left:4px solid var(--amber)}.p3{border-left:4px solid var(--line)}
+.del{border:0;background:none;color:var(--muted);font-size:20px;padding:4px 8px}
+.hab{background:var(--card);border-radius:14px;padding:12px;margin:8px 0}
+.hab .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.streak{font-size:13px;color:var(--amber);font-weight:600;white-space:nowrap}
+.days{display:flex;justify-content:space-between;margin-top:10px}
+.day{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
+.day button{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);background:none;color:#fff;font-size:16px;padding:0}
+.day button.on{background:var(--green);border-color:var(--green)}
+.day.today span{color:var(--accent);font-weight:700}
+.clear{display:block;margin:12px auto;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;padding:8px}
+.empty{text-align:center;color:var(--muted);padding:40px 0}
+form{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr auto;gap:8px}
+form[hidden]{display:none}
+form input,form select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+form .row{grid-column:1/-1;display:flex;gap:8px}
+form .row>*{flex:1}
+form button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 18px;font-size:22px}
+</style>
+</head>
+<body>
+<header><h1>Mein Alltag</h1><div class="sub" id="sub"></div></header>
+<nav id="tabs"></nav>
+<main id="list"></main>
+<form id="f">
+  <input id="title" placeholder="Neue Aufgabe…" required autocomplete="off">
+  <button aria-label="Hinzufügen">＋</button>
+  <div class="row">
+    <input id="date" type="date">
+    <select id="prio"><option value="3">Normal</option><option value="2">Wichtig</option><option value="1">Dringend</option></select>
+    <select id="cat"><option>Privat</option><option>Arbeit</option><option>Haushalt</option><option>Gesundheit</option><option>Einkauf</option></select>
+  </div>
+</form>
+<form id="hf" hidden>
+  <input id="hname" placeholder="Neue Gewohnheit… (z. B. Wasser trinken)" autocomplete="off">
+  <button aria-label="Hinzufügen">＋</button>
+</form>
+<form id="sf" hidden>
+  <input id="sname" placeholder="Einkaufen… (z. B. Milch)" autocomplete="off">
+  <button aria-label="Hinzufügen">＋</button>
+</form>
+<script>
+const KEY='alltag.tasks.v1';
+let tasks=[];try{tasks=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){}
+const HKEY='alltag.habits.v1';
+let habits=[];try{habits=JSON.parse(localStorage.getItem(HKEY))||[]}catch(e){}
+const saveH=()=>{try{localStorage.setItem(HKEY,JSON.stringify(habits))}catch(e){}};
+const SKEY='alltag.shop.v1';
+let shop=[];try{shop=JSON.parse(localStorage.getItem(SKEY))||[]}catch(e){}
+const saveS=()=>{try{localStorage.setItem(SKEY,JSON.stringify(shop))}catch(e){}};
+let tab='heute';
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}};
+const iso=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
+const today=()=>iso(new Date());
+const TABS=[['heute','Heute'],['geplant','Geplant'],['alle','Alle'],['erledigt','Erledigt'],['habits','Gewohnheiten'],['shop','Einkauf']];
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function visible(){
+  const t=today();
+  let l=tasks.filter(x=>{
+    if(tab==='erledigt')return x.done;
+    if(x.done)return false;
+    if(tab==='heute')return !x.date||x.date<=t;
+    if(tab==='geplant')return x.date&&x.date>t;
+    return true;
+  });
+  return l.sort((a,b)=>(a.prio-b.prio)||((a.date||'9')>(b.date||'9')?1:-1));
+}
+function fmt(d){return new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'})}
+function addDays(d,n){const x=new Date(d+'T00:00');x.setDate(x.getDate()+n);return iso(x)}
+function streak(h){
+  let d=today();if(!h.days.includes(d))d=addDays(d,-1);
+  let n=0;while(h.days.includes(d)){n++;d=addDays(d,-1)}return n;
+}
+function renderHabits(){
+  const t=today();
+  const week=[...Array(7)].map((_,i)=>addDays(t,i-6));
+  document.getElementById('list').innerHTML=habits.length?habits.map(h=>{
+    const n=streak(h);
+    return `<div class="hab">
+      <div class="top"><b>${esc(h.name)}</b>
+      <span class="streak">${n?`🔥 ${n} ${n===1?'Tag':'Tage'}`:''}</span>
+      <button class="del" data-hdel="${h.id}" aria-label="Löschen">×</button></div>
+      <div class="days">${week.map(d=>`<div class="day ${d===t?'today':''}"><button class="${h.days.includes(d)?'on':''}" data-hday="${h.id}|${d}">${h.days.includes(d)?'✓':''}</button><span>${new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'short'})}</span></div>`).join('')}</div>
+    </div>`}).join(''):'<div class="empty">Noch keine Gewohnheiten.<br>Lege unten die erste an.</div>';
+}
+function renderShop(){
+  const open=shop.filter(x=>!x.done),done=shop.filter(x=>x.done);
+  const row=x=>`<div class="item ${x.done?'done':''}"><button class="chk" data-sdone="${x.id}">${x.done?'✓':''}</button><div class="t"><div>${esc(x.name)}</div></div><button class="del" data-sdel="${x.id}" aria-label="Löschen">×</button></div>`;
+  document.getElementById('list').innerHTML=shop.length?open.map(row).join('')+done.map(row).join('')+(done.length?`<button class="clear" data-sclear="1">Erledigte entfernen (${done.length})</button>`:''):'<div class="empty">Die Einkaufsliste ist leer 🛒</div>';
+}
+function render(){
+  const hb=tab==='habits',sb=tab==='shop';
+  document.getElementById('f').hidden=hb||sb;document.getElementById('hf').hidden=!hb;document.getElementById('sf').hidden=!sb;
+  document.getElementById('sub').textContent=new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+' · '+tasks.filter(x=>!x.done).length+' offen';
+  document.getElementById('tabs').innerHTML=TABS.map(([k,n])=>`<button class="${k===tab?'on':''}" data-tab="${k}">${n}</button>`).join('');
+  if(hb){renderHabits();return}
+  if(sb){renderShop();return}
+  const l=visible();
+  document.getElementById('list').innerHTML=l.length?l.map(x=>`
+    <div class="item p${x.prio} ${x.done?'done':''}">
+      <button class="chk" data-done="${x.id}">${x.done?'✓':''}</button>
+      <div class="t"><div>${esc(x.title)}</div>
+      <div class="meta">${esc(x.cat)}${x.date?` · <span class="${!x.done&&x.date<today()?'over':''}">${fmt(x.date)}</span>`:''}</div></div>
+      <button class="del" data-del="${x.id}" aria-label="Löschen">×</button>
+    </div>`).join(''):'<div class="empty">Nichts zu tun 🎉</div>';
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.tab){tab=b.dataset.tab}
+  else if(b.dataset.done){const x=tasks.find(t=>t.id==b.dataset.done);x.done=!x.done;save()}
+  else if(b.dataset.hday){const[id,d]=b.dataset.hday.split('|');const h=habits.find(x=>x.id==id);h.days=h.days.includes(d)?h.days.filter(x=>x!==d):[...h.days,d];saveH()}
+  else if(b.dataset.sdone){const x=shop.find(t=>t.id==b.dataset.sdone);x.done=!x.done;saveS()}
+  else if(b.dataset.sdel){shop=shop.filter(t=>t.id!=b.dataset.sdel);saveS()}
+  else if(b.dataset.sclear){shop=shop.filter(t=>!t.done);saveS()}
+  else if(b.dataset.hdel){habits=habits.filter(x=>x.id!=b.dataset.hdel);saveH()}
+  else if(b.dataset.del){tasks=tasks.filter(t=>t.id!=b.dataset.del);save()}
+  else return;
+  render();
+});
+document.getElementById('f').addEventListener('submit',e=>{
+  e.preventDefault();
+  const title=document.getElementById('title').value.trim();if(!title)return;
+  tasks.push({id:Date.now(),title,date:document.getElementById('date').value,prio:+document.getElementById('prio').value,cat:document.getElementById('cat').value,done:false});
+  save();document.getElementById('title').value='';render();
+});
+document.getElementById('hf').addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=document.getElementById('hname').value.trim();if(!name)return;
+  habits.push({id:Date.now(),name,days:[]});saveH();document.getElementById('hname').value='';render();
+});
+document.getElementById('sf').addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=document.getElementById('sname').value.trim();if(!name)return;
+  shop.push({id:Date.now(),name,done:false});saveS();document.getElementById('sname').value='';
+  render();document.getElementById('sname').focus();
+});
+render();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
