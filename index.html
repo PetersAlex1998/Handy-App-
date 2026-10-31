@@ -3,22 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#4f46e5">
+<meta name="theme-color" content="#f8f5f0">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg">
 <link rel="apple-touch-icon" href="icons/icon.svg">
 <title>Mein Alltag</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
 <style>
-:root{--bg:#f5f6fa;--card:#fff;--text:#1c1c28;--muted:#7a7a8c;--accent:#4f46e5;--line:#e6e7ef;--red:#e5484d;--amber:#f5a524;--green:#2fa36b}
-@media (prefers-color-scheme:dark){:root{--bg:#12121a;--card:#1c1c28;--text:#f0f0f6;--muted:#9a9ab0;--line:#2c2c3c}}
+:root{--bg:#f8f5f0;--card:#fffdfa;--text:#2e2924;--muted:#8a8076;--accent:#8c6d3f;--on-accent:#fff;--soft:#f3e9d6;--line:#ece5da;--red:#c9645a;--amber:#d09a3c;--green:#5b8c71;--shadow:0 1px 2px rgba(80,60,30,.05),0 8px 22px rgba(80,60,30,.06)}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1815;--card:#252019;--text:#f1eadf;--muted:#a59b8e;--line:#39322a;--accent:#cfae72;--on-accent:#1f1a14;--soft:#3a3227;--shadow:none}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,sans-serif;padding-bottom:calc(210px + env(safe-area-inset-bottom))}
 header{padding:calc(16px + env(safe-area-inset-top)) 16px 8px}
-h1{margin:0;font-size:24px}
+h1{margin:0;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:34px;font-weight:600;letter-spacing:.01em;line-height:1.1}
 .sub{color:var(--muted);font-size:14px}
 nav{display:flex;gap:8px;padding:8px 16px;overflow-x:auto}
 nav button{border:0;background:var(--card);color:var(--text);padding:8px 14px;border-radius:20px;font-size:15px;white-space:nowrap}
-nav button.on{background:var(--accent);color:#fff}
+nav button.on{background:var(--accent);color:var(--on-accent)}
 main{padding:0 16px}
 .item{display:flex;gap:12px;align-items:center;background:var(--card);padding:12px;border-radius:14px;margin:8px 0}
 .item .t{flex:1;min-width:0}
@@ -58,19 +60,26 @@ main{padding:0 16px}
 .ned .nd{color:var(--red)}
 #ntext{display:block;width:100%;min-height:55vh;resize:none;font:inherit;line-height:1.5;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
 #nf button{grid-column:1/-1;padding:12px;font-size:16px}
-.al{display:flex;gap:8px;align-items:center;background:var(--accent);color:#fff;border-radius:12px;padding:10px 12px;margin:6px 0}
+.al{display:flex;gap:8px;align-items:center;background:var(--soft);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:6px 0}
 .al .at{flex:1;min-width:0;word-break:break-word}
-.al button{border:0;border-radius:8px;padding:6px 10px;background:rgba(255,255,255,.22);color:#fff;font:inherit;font-size:14px}
+.al button{border:0;border-radius:8px;padding:6px 10px;background:var(--card);color:var(--accent);box-shadow:var(--shadow);font:inherit;font-size:14px}
 #banner{margin-left:max(16px,env(safe-area-inset-left,0px));margin-right:max(16px,env(safe-area-inset-right,0px))}
 #perm{border:0;background:none;color:var(--accent);font:inherit;font-size:14px;padding:6px 0}
 form .row>*{font-size:14px}
+.item,.hab,.nrow,nav button,.wk-nav button,.ned button{box-shadow:var(--shadow)}
+.item,.hab,.nrow,.al{border-radius:18px}
+nav button{padding:9px 16px;font-size:14px;letter-spacing:.02em}
+form{box-shadow:0 -8px 24px rgba(80,60,30,.07)}
+form input,form select{border-radius:12px}
+.sub{letter-spacing:.03em}
+.wday h3{letter-spacing:.06em;text-transform:uppercase;font-size:12px}
 .empty{text-align:center;color:var(--muted);padding:40px 0}
 form{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr auto;gap:8px}
 form[hidden]{display:none}
 form input,form select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
 form .row{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
 form .row>*{flex:1 1 28%;min-width:0}
-form button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 18px;font-size:22px}
+form button{background:var(--accent);color:var(--on-accent);border:0;border-radius:12px;padding:0 18px;font-size:22px}
 </style>
 </head>
 <body>
