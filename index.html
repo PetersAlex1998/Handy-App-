@@ -43,8 +43,8 @@ main{padding:0 16px}
 form{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr auto;gap:8px}
 form[hidden]{display:none}
 form input,form select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
-form .row{grid-column:1/-1;display:flex;gap:8px}
-form .row>*{flex:1}
+form .row{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+form .row>*{flex:1 1 40%}
 form button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 18px;font-size:22px}
 </style>
 </head>
@@ -59,6 +59,7 @@ form button{background:var(--accent);color:#fff;border:0;border-radius:10px;padd
     <input id="date" type="date">
     <select id="prio"><option value="3">Normal</option><option value="2">Wichtig</option><option value="1">Dringend</option></select>
     <select id="cat"><option>Privat</option><option>Arbeit</option><option>Haushalt</option><option>Gesundheit</option><option>Einkauf</option></select>
+    <select id="rep"><option value="">Einmalig</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich</option><option value="monthly">Monatlich</option></select>
   </div>
 </form>
 <form id="hf" hidden>
@@ -83,6 +84,29 @@ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}};
 const iso=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
 const today=()=>iso(new Date());
 const TABS=[['heute','Heute'],['geplant','Geplant'],['alle','Alle'],['erledigt','Erledigt'],['habits','Gewohnheiten'],['shop','Einkauf']];
+const REPN={daily:'Täglich',weekly:'Wöchentlich',monthly:'Monatlich'};
+function nextDate(d,r){
+  const x=new Date(d+'T00:00');
+  if(r==='daily')x.setDate(x.getDate()+1);
+  else if(r==='weekly')x.setDate(x.getDate()+7);
+  else{const day=x.getDate();x.setDate(1);x.setMonth(x.getMonth()+1);x.setDate(Math.min(day,new Date(x.getFullYear(),x.getMonth()+1,0).getDate()))}
+  return iso(x);
+}
+function toggleTask(id){
+  const x=tasks.find(t=>t.id==id);if(!x)return;
+  x.done=!x.done;
+  if(x.done&&x.rep){
+    let d=nextDate(x.date||today(),x.rep);
+    while(d<=today())d=nextDate(d,x.rep);
+    const n={id:Date.now(),title:x.title,date:d,prio:x.prio,cat:x.cat,rep:x.rep,done:false};
+    x.next=n.id;tasks.push(n);
+  }else if(!x.done&&x.next){
+    const n=tasks.find(t=>t.id===x.next);
+    if(n&&!n.done)tasks=tasks.filter(t=>t!==n);
+    delete x.next;
+  }
+  save();
+}
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function visible(){
   const t=today();
@@ -130,14 +154,14 @@ function render(){
     <div class="item p${x.prio} ${x.done?'done':''}">
       <button class="chk" data-done="${x.id}">${x.done?'✓':''}</button>
       <div class="t"><div>${esc(x.title)}</div>
-      <div class="meta">${esc(x.cat)}${x.date?` · <span class="${!x.done&&x.date<today()?'over':''}">${fmt(x.date)}</span>`:''}</div></div>
+      <div class="meta">${esc(x.cat)}${x.rep?' · 🔁 '+REPN[x.rep]:''}${x.date?` · <span class="${!x.done&&x.date<today()?'over':''}">${fmt(x.date)}</span>`:''}</div></div>
       <button class="del" data-del="${x.id}" aria-label="Löschen">×</button>
     </div>`).join(''):'<div class="empty">Nichts zu tun 🎉</div>';
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.tab){tab=b.dataset.tab}
-  else if(b.dataset.done){const x=tasks.find(t=>t.id==b.dataset.done);x.done=!x.done;save()}
+  else if(b.dataset.done){toggleTask(b.dataset.done)}
   else if(b.dataset.hday){const[id,d]=b.dataset.hday.split('|');const h=habits.find(x=>x.id==id);h.days=h.days.includes(d)?h.days.filter(x=>x!==d):[...h.days,d];saveH()}
   else if(b.dataset.sdone){const x=shop.find(t=>t.id==b.dataset.sdone);x.done=!x.done;saveS()}
   else if(b.dataset.sdel){shop=shop.filter(t=>t.id!=b.dataset.sdel);saveS()}
@@ -150,7 +174,7 @@ document.addEventListener('click',e=>{
 document.getElementById('f').addEventListener('submit',e=>{
   e.preventDefault();
   const title=document.getElementById('title').value.trim();if(!title)return;
-  tasks.push({id:Date.now(),title,date:document.getElementById('date').value,prio:+document.getElementById('prio').value,cat:document.getElementById('cat').value,done:false});
+  tasks.push({id:Date.now(),title,date:document.getElementById('date').value,prio:+document.getElementById('prio').value,cat:document.getElementById('cat').value,rep:document.getElementById('rep').value,done:false});
   save();document.getElementById('title').value='';render();
 });
 document.getElementById('hf').addEventListener('submit',e=>{
