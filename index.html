@@ -39,6 +39,15 @@ main{padding:0 16px}
 .day button.on{background:var(--green);border-color:var(--green)}
 .day.today span{color:var(--accent);font-weight:700}
 .clear{display:block;margin:12px auto;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;padding:8px}
+.wk-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0}
+.wk-nav button{border:0;background:var(--card);color:var(--text);border-radius:10px;padding:8px 14px;font-size:16px}
+.wk-nav b{flex:1;text-align:center;font-size:15px}
+.wday h3{margin:18px 0 2px;font-size:14px;display:flex;justify-content:space-between;align-items:baseline;color:var(--muted);font-weight:600}
+.wday.today h3{color:var(--accent)}
+.wday.over h3{color:var(--red)}
+.wadd{border:0;background:none;color:var(--accent);font:inherit;font-size:14px;padding:6px 0}
+.wform input{width:100%;font:inherit;color:var(--text);background:var(--card);border:1px solid var(--accent);border-radius:10px;padding:10px;margin:4px 0}
+.wday .none{color:var(--muted);font-size:13px;padding:4px 0}
 .empty{text-align:center;color:var(--muted);padding:40px 0}
 form{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr auto;gap:8px}
 form[hidden]{display:none}
@@ -79,11 +88,11 @@ const saveH=()=>{try{localStorage.setItem(HKEY,JSON.stringify(habits))}catch(e){
 const SKEY='alltag.shop.v1';
 let shop=[];try{shop=JSON.parse(localStorage.getItem(SKEY))||[]}catch(e){}
 const saveS=()=>{try{localStorage.setItem(SKEY,JSON.stringify(shop))}catch(e){}};
-let tab='heute';
+let tab='heute',weekOffset=0,addDay=null;
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}};
 const iso=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
 const today=()=>iso(new Date());
-const TABS=[['heute','Heute'],['geplant','Geplant'],['alle','Alle'],['erledigt','Erledigt'],['habits','Gewohnheiten'],['shop','Einkauf']];
+const TABS=[['heute','Heute'],['woche','Woche'],['geplant','Geplant'],['alle','Alle'],['erledigt','Erledigt'],['habits','Gewohnheiten'],['shop','Einkauf']];
 const REPN={daily:'Täglich',weekly:'Wöchentlich',monthly:'Monatlich'};
 function nextDate(d,r){
   const x=new Date(d+'T00:00');
@@ -137,32 +146,61 @@ function renderHabits(){
       <div class="days">${week.map(d=>`<div class="day ${d===t?'today':''}"><button class="${h.days.includes(d)?'on':''}" data-hday="${h.id}|${d}">${h.days.includes(d)?'✓':''}</button><span>${new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'short'})}</span></div>`).join('')}</div>
     </div>`}).join(''):'<div class="empty">Noch keine Gewohnheiten.<br>Lege unten die erste an.</div>';
 }
+function itemRow(x,showDate){
+  return `<div class="item p${x.prio} ${x.done?'done':''}">
+      <button class="chk" data-done="${x.id}">${x.done?'✓':''}</button>
+      <div class="t"><div>${esc(x.title)}</div>
+      <div class="meta">${esc(x.cat)}${x.rep?' · 🔁 '+REPN[x.rep]:''}${showDate&&x.date?` · <span class="${!x.done&&x.date<today()?'over':''}">${fmt(x.date)}</span>`:''}</div></div>
+      <button class="del" data-del="${x.id}" aria-label="Löschen">×</button>
+    </div>`;
+}
+function renderWeek(){
+  const t=today();
+  const mon=addDays(t,-((new Date().getDay()+6)%7)+7*weekOffset);
+  const days=[...Array(7)].map((_,i)=>addDays(mon,i));
+  const short=d=>new Date(d+'T00:00').toLocaleDateString('de-DE',{day:'numeric',month:'short'});
+  const sortT=(a,b)=>(a.done-b.done)||(a.prio-b.prio);
+  let h=`<div class="wk-nav"><button data-wk="-1" aria-label="Vorherige Woche">‹</button><b>${short(days[0])} – ${short(days[6])}</b><button data-wk="1" aria-label="Nächste Woche">›</button></div>`;
+  if(weekOffset!==0)h+=`<button class="wadd" data-wk="reset">Zurück zu dieser Woche</button>`;
+  if(weekOffset===0){
+    const od=tasks.filter(x=>!x.done&&x.date&&x.date<mon).sort(sortT);
+    if(od.length)h+=`<section class="wday over"><h3><span>Überfällig</span><span>${od.length}</span></h3>${od.map(x=>itemRow(x,true)).join('')}</section>`;
+  }
+  h+=days.map(d=>{
+    const l=tasks.filter(x=>x.date===d).sort(sortT);
+    const open=l.filter(x=>!x.done).length;
+    const name=new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'short'});
+    return `<section class="wday ${d===t?'today':''}"><h3><span>${name}${d===t?' · Heute':''}</span><span>${l.length?open+' offen':''}</span></h3>
+      ${l.length?l.map(x=>itemRow(x,false)).join(''):'<div class="none">Frei</div>'}
+      ${addDay===d?`<form class="wform" data-d="${d}"><input id="wadd" placeholder="Neue Aufgabe für diesen Tag…" autocomplete="off"></form>`:''}
+      <button class="wadd" data-wadd="${d}">${addDay===d?'Abbrechen':'＋ Aufgabe'}</button></section>`;
+  }).join('');
+  document.getElementById('list').innerHTML=h;
+  const i=document.getElementById('wadd');if(i)i.focus();
+}
 function renderShop(){
   const open=shop.filter(x=>!x.done),done=shop.filter(x=>x.done);
   const row=x=>`<div class="item ${x.done?'done':''}"><button class="chk" data-sdone="${x.id}">${x.done?'✓':''}</button><div class="t"><div>${esc(x.name)}</div></div><button class="del" data-sdel="${x.id}" aria-label="Löschen">×</button></div>`;
   document.getElementById('list').innerHTML=shop.length?open.map(row).join('')+done.map(row).join('')+(done.length?`<button class="clear" data-sclear="1">Erledigte entfernen (${done.length})</button>`:''):'<div class="empty">Die Einkaufsliste ist leer 🛒</div>';
 }
 function render(){
-  const hb=tab==='habits',sb=tab==='shop';
-  document.getElementById('f').hidden=hb||sb;document.getElementById('hf').hidden=!hb;document.getElementById('sf').hidden=!sb;
+  const hb=tab==='habits',sb=tab==='shop',wk=tab==='woche';
+  document.getElementById('f').hidden=hb||sb||wk;document.getElementById('hf').hidden=!hb;document.getElementById('sf').hidden=!sb;
   document.getElementById('sub').textContent=new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+' · '+tasks.filter(x=>!x.done).length+' offen';
   document.getElementById('tabs').innerHTML=TABS.map(([k,n])=>`<button class="${k===tab?'on':''}" data-tab="${k}">${n}</button>`).join('');
   if(hb){renderHabits();return}
   if(sb){renderShop();return}
+  if(wk){renderWeek();return}
   const l=visible();
-  document.getElementById('list').innerHTML=l.length?l.map(x=>`
-    <div class="item p${x.prio} ${x.done?'done':''}">
-      <button class="chk" data-done="${x.id}">${x.done?'✓':''}</button>
-      <div class="t"><div>${esc(x.title)}</div>
-      <div class="meta">${esc(x.cat)}${x.rep?' · 🔁 '+REPN[x.rep]:''}${x.date?` · <span class="${!x.done&&x.date<today()?'over':''}">${fmt(x.date)}</span>`:''}</div></div>
-      <button class="del" data-del="${x.id}" aria-label="Löschen">×</button>
-    </div>`).join(''):'<div class="empty">Nichts zu tun 🎉</div>';
+  document.getElementById('list').innerHTML=l.length?l.map(x=>itemRow(x,true)).join(''):'<div class="empty">Nichts zu tun 🎉</div>';
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.tab){tab=b.dataset.tab}
   else if(b.dataset.done){toggleTask(b.dataset.done)}
   else if(b.dataset.hday){const[id,d]=b.dataset.hday.split('|');const h=habits.find(x=>x.id==id);h.days=h.days.includes(d)?h.days.filter(x=>x!==d):[...h.days,d];saveH()}
+  else if(b.dataset.wk){weekOffset=b.dataset.wk==='reset'?0:weekOffset+(+b.dataset.wk)}
+  else if(b.dataset.wadd){addDay=addDay===b.dataset.wadd?null:b.dataset.wadd}
   else if(b.dataset.sdone){const x=shop.find(t=>t.id==b.dataset.sdone);x.done=!x.done;saveS()}
   else if(b.dataset.sdel){shop=shop.filter(t=>t.id!=b.dataset.sdel);saveS()}
   else if(b.dataset.sclear){shop=shop.filter(t=>!t.done);saveS()}
@@ -181,6 +219,13 @@ document.getElementById('hf').addEventListener('submit',e=>{
   e.preventDefault();
   const name=document.getElementById('hname').value.trim();if(!name)return;
   habits.push({id:Date.now(),name,days:[]});saveH();document.getElementById('hname').value='';render();
+});
+document.addEventListener('submit',e=>{
+  const f=e.target.closest('.wform');if(!f)return;
+  e.preventDefault();
+  const title=f.querySelector('input').value.trim();if(!title)return;
+  tasks.push({id:Date.now(),title,date:f.dataset.d,prio:3,cat:'Privat',rep:'',done:false});
+  save();render();
 });
 document.getElementById('sf').addEventListener('submit',e=>{
   e.preventDefault();
