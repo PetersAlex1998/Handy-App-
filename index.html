@@ -201,6 +201,20 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 .hab .top{align-items:center}
 .hab .tr{display:flex;align-items:center;gap:8px}
 
+/* Projekte und Teilschritte */
+.pcard{display:block;width:100%;text-align:left;border:0;margin:10px 0;color:var(--text)}
+.phd{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.phd b{font-family:var(--serif);font-size:21px;font-weight:600;line-height:1.2;word-break:break-word;font-variant-numeric:lining-nums}
+.pcard .prog{background:var(--line);margin-top:10px}
+.pnext{margin-top:8px;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pnote{margin:12px 0 0;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.subrow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.subrow span{flex:1;min-width:0;word-break:break-word}
+.subrow.done span{text-decoration:line-through;color:var(--muted)}
+.chk.sm{width:22px;height:22px}
+.subx{border:0;background:none;color:var(--muted);padding:2px;display:grid;place-items:center}
+#t-subadd{margin-top:4px}
+
 /* Hinweis (Erinnerung) */
 #banner{margin-top:6px}
 .al{display:flex;gap:8px;align-items:center;background:var(--soft);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:10px 12px;margin:8px 0}
@@ -273,7 +287,20 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
         <div><div class="lbl" style="margin-top:0">Bereich</div><select id="t-cat" aria-label="Bereich"><option>Privat</option><option>Arbeit</option><option>Haushalt</option><option>Gesundheit</option><option>Einkauf</option></select></div>
         <div><div class="lbl" style="margin-top:0">Wiederholen</div><select id="t-rep" aria-label="Wiederholen"><option value="">Einmalig</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich</option><option value="monthly">Monatlich</option></select></div>
       </div>
+      <div class="lbl">Projekt</div>
+      <select id="t-proj" aria-label="Projekt"></select>
+      <div class="lbl">Teilschritte</div>
+      <div id="t-subs"></div>
+      <input id="t-subadd" type="text" placeholder="Teilschritt hinzufügen" enterkeyhint="done" autocomplete="off">
       <div class="acts"><button type="button" class="del" id="t-del" data-tdel="1">Löschen</button><button type="submit" class="ok">Speichern</button></div>
+    </form>
+    <form id="pform" autocomplete="off" hidden>
+      <input id="p-name" type="text" placeholder="Projektname, z. B. Umzug" required>
+      <div class="lbl">Notiz</div>
+      <textarea id="p-note" class="ta" rows="3" placeholder="Worum geht es?" aria-label="Notiz"></textarea>
+      <div class="lbl">Fällig bis</div>
+      <input id="p-due" type="date" aria-label="Fällig bis">
+      <div class="acts"><button type="button" class="del" id="p-del" data-pdel="1">Löschen</button><button type="submit" class="ok">Speichern</button></div>
     </form>
     <form id="hform" autocomplete="off" hidden>
       <input id="h-name" type="text" placeholder="z. B. Wasser trinken" required>
@@ -306,6 +333,7 @@ up:'<path d="M12 16V4M7 8l5-5 5 5M4 20h16"/>',
 copy:'<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>',
 trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
 x:'<path d="M6 6l12 12M18 6L6 18"/>',
+folder:'<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
 chart:'<path d="M5 20v-7M12 20V5M19 20v-11"/>',
 moon:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',
 book:'<path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/>',
@@ -314,13 +342,16 @@ shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2.2
 function ic(n,s=22,w=1.8){return `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`}
 
 /* ---------- Daten ---------- */
-const K={t:'alltag.tasks.v1',h:'alltag.habits.v1',s:'alltag.shop.v1',n:'alltag.notes.v1',r:'alltag.reviews.v1',b:'alltag.backup.v1'};
+const K={t:'alltag.tasks.v1',h:'alltag.habits.v1',s:'alltag.shop.v1',n:'alltag.notes.v1',r:'alltag.reviews.v1',p:'alltag.projects.v1',b:'alltag.backup.v1'};
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
 const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-let tasks=load(K.t,[]),habits=load(K.h,[]),shop=load(K.s,[]),notes=load(K.n,[]),reviews=load(K.r,[]);
+let tasks=load(K.t,[]),habits=load(K.h,[]),shop=load(K.s,[]),notes=load(K.n,[]),reviews=load(K.r,[]),projects=load(K.p,[]);
 const saveT=()=>put(K.t,tasks),saveH=()=>put(K.h,habits),saveS=()=>put(K.s,shop),saveN=()=>put(K.n,notes);
 const saveR=()=>put(K.r,reviews);
-const saveAll=()=>{saveT();saveH();saveS();saveN();saveR()};
+const saveP=()=>put(K.p,projects);
+const saveAll=()=>{saveT();saveH();saveS();saveN();saveR();saveP()};
+function projOf(id){return projects.find(p=>p.id===id)}
+function projStats(p){const l=tasks.filter(t=>t.proj===p.id);const done=l.filter(t=>t.done).length;return{total:l.length,done,open:l.length-done}}
 const lastBackup=()=>{try{return +localStorage.getItem(K.b)||0}catch(e){return 0}};
 const markBackup=()=>{try{localStorage.setItem(K.b,String(Date.now()))}catch(e){}};
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
@@ -349,7 +380,7 @@ function toggleTask(id){
     if(x.rep){
       let d=nextDate(x.date||today(),x.rep);
       while(d<=today())d=nextDate(d,x.rep);
-      const n={id:Date.now(),title:x.title,date:d,time:x.time||'',rem:x.rem,reminded:false,prio:x.prio,cat:x.cat,rep:x.rep,done:false};
+      const n={id:Date.now(),title:x.title,date:d,time:x.time||'',rem:x.rem,reminded:false,prio:x.prio,cat:x.cat,rep:x.rep,proj:x.proj||'',sub:(x.sub||[]).map(z=>({...z,done:false})),done:false};
       x.next=n.id;tasks.push(n);
     }
   }else{
@@ -362,7 +393,7 @@ function streak(h){let d=today();if(!h.days.includes(d))d=addDays(d,-1);let n=0;
 
 /* ---------- Rueckgaengig ---------- */
 let undoSnap=null,toastTimer=null;
-const snap=()=>JSON.stringify({tasks,habits,shop,notes,reviews});
+const snap=()=>JSON.stringify({tasks,habits,shop,notes,reviews,projects});
 function toast(msg){
   undoSnap=snap.last||null;
   $('tmsg').textContent=msg;$('toast').hidden=false;
@@ -371,7 +402,7 @@ function toast(msg){
 function destructive(msg,fn){snap.last=snap();fn();render();toast(msg)}
 $('tundo').addEventListener('click',()=>{
   if(!undoSnap)return;
-  const o=JSON.parse(undoSnap);tasks=o.tasks;habits=o.habits;shop=o.shop;notes=o.notes;reviews=o.reviews||[];saveAll();
+  const o=JSON.parse(undoSnap);tasks=o.tasks;habits=o.habits;shop=o.shop;notes=o.notes;reviews=o.reviews||[];projects=o.projects||[];saveAll();
   undoSnap=null;$('toast').hidden=true;checkReminders();render();
 });
 
@@ -412,8 +443,8 @@ function checkReminders(){
 
 /* ---------- Sicherung ---------- */
 let pendingImport=null,backupMsg='',backupText='';
-function backupDue(){const n=tasks.length+habits.length+shop.length+notes.length+reviews.length;const l=lastBackup();return n>=5&&(!l||Date.now()-l>14*864e5)}
-function backupJSON(){return JSON.stringify({app:'alltag',version:2,exported:new Date().toISOString(),data:{tasks,habits,shop,notes,reviews}},null,1)}
+function backupDue(){const n=tasks.length+habits.length+shop.length+notes.length+reviews.length+projects.length;const l=lastBackup();return n>=5&&(!l||Date.now()-l>14*864e5)}
+function backupJSON(){return JSON.stringify({app:'alltag',version:2,exported:new Date().toISOString(),data:{tasks,habits,shop,notes,reviews,projects}},null,1)}
 function downloadBackup(){
   const json=backupJSON();
   try{
@@ -437,6 +468,7 @@ function readBackup(text){
     const ok=k=>Array.isArray(d[k]);
     if(!d||!ok('tasks')||!ok('habits')||!ok('shop')||!ok('notes'))throw 0;
     if(!Array.isArray(d.reviews))d.reviews=[];
+    if(!Array.isArray(d.projects))d.projects=[];
     pendingImport={d,exported:o.exported||''};backupMsg='';
   }catch(e){pendingImport=null;backupMsg='Diese Datei ist keine gültige Sicherung.'}
   render();
@@ -449,14 +481,14 @@ function applyImport(){
   if(!pendingImport)return;
   const d=pendingImport.d;pendingImport=null;
   snap.last=snap();
-  tasks=d.tasks;habits=d.habits;shop=d.shop;notes=d.notes;reviews=d.reviews||[];saveAll();alerts=[];
+  tasks=d.tasks;habits=d.habits;shop=d.shop;notes=d.notes;reviews=d.reviews||[];projects=d.projects||[];saveAll();alerts=[];
   backupMsg='Sicherung eingespielt.';render();toast('Daten ersetzt');checkReminders();
 }
 
 /* ---------- Navigation ---------- */
 let view='home',taskSeg='open',catFilter='',weekOffset=0,addDay=null,openNote=null,noteQ='';
 const TABS=[['home','Heute','sun'],['tasks','Aufgaben','list'],['week','Woche','cal'],['habits','Gewohnheiten','repeat'],['more','Mehr','more']];
-const group=v=>(v==='shop'||v==='notes'||v==='history')?'more':v==='review'?'home':v==='hstats'?'habits':v;
+const group=v=>(v==='shop'||v==='notes'||v==='history')?'more':v==='review'?'home':v==='hstats'?'habits':v==='proj'?'tasks':v;
 function setTop(title,sub,o={}){
   $('crumb').innerHTML=o.back?`<button class="back" data-back="1">${ic('chevL',18,2)}${o.back===true?'Mehr':o.back}</button>`:'';
   $('h1').textContent=title;$('sub').textContent=sub||'';$('sub').hidden=!sub;
@@ -468,12 +500,14 @@ function renderBar(){
 function fabInfo(){
   if(view==='habits')return['habit','Neue Gewohnheit'];
   if(view==='notes'&&openNote===null)return['note','Neue Notiz'];
-  if(view==='home'||view==='tasks'||view==='week')return['task','Neue Aufgabe'];
+  if(view==='tasks'&&taskSeg==='projects')return['project','Neues Projekt'];
+  if(view==='home'||view==='tasks'||view==='week'||view==='proj')return['task','Neue Aufgabe'];
   return null;
 }
 function render(){
+  quickProj=view==='proj'?projId:'';
   const f=fabInfo();$('fab').hidden=!f;if(f){$('fab').innerHTML=ic('plus',28,2.2);$('fab').setAttribute('aria-label',f[1])}
-  ({home:renderHome,tasks:renderTasks,week:renderWeek,habits:renderHabits,more:renderMore,shop:renderShop,notes:renderNotes,review:renderReview,history:renderHistory,hstats:renderHstats})[view]();
+  ({home:renderHome,tasks:renderTasks,week:renderWeek,habits:renderHabits,more:renderMore,shop:renderShop,notes:renderNotes,review:renderReview,history:renderHistory,hstats:renderHstats,proj:renderProj})[view]();
   renderBar();renderBanner();
 }
 
@@ -485,7 +519,7 @@ const CATKW=[['Gesundheit',['arzt','apotheke','tablette','medikament','sport','t
 function parseQuick(text,nowD){
   const now=nowD||new Date(),t0=iso(now);
   let s=' '+String(text)+' ';
-  const o={title:'',date:'',time:'',rem:'',prio:3,cat:'',rep:'',guessed:false};
+  const o={title:'',date:'',time:'',rem:'',prio:3,cat:'',rep:'',proj:'',guessed:false};
   const take=(src,ok)=>{
     const re=new RegExp('(^|[^\\p{L}\\d])(?:'+src+')(?![\\p{L}\\d])','iu');
     const m=s.match(re);if(!m)return null;
@@ -542,7 +576,7 @@ function parseQuick(text,nowD){
     else setT({morgens:8,vormittags:10,mittags:12,nachmittags:15,abends:19}[w],0);
   }
   // Bereich per #Tag
-  if(m=take('#(\\p{L}+)')){const c=['Privat','Arbeit','Haushalt','Gesundheit','Einkauf'].find(x=>x.toLowerCase().startsWith(m[2].toLowerCase()));if(c)o.cat=c}
+  if(m=take('#(\\p{L}+)')){const c=['Privat','Arbeit','Haushalt','Gesundheit','Einkauf'].find(x=>x.toLowerCase().startsWith(m[2].toLowerCase()));if(c)o.cat=c;else{const w=m[2].toLowerCase(),pr=projects.find(x=>!x.closed&&x.name.toLowerCase().split(/[^\p{L}\d]+/u).some(wd=>wd&&wd.startsWith(w)));if(pr)o.proj=pr.id}}
   // Titel bereinigen
   let t=s.replace(/\s+/g,' ').trim();
   const lead=/^(am|um|bis|für|ab|den|dem|in|jeden|und|noch|mal|:|,|;|-)\s+/i,trail=/\s+(am|um|bis|für|ab|den|dem|in|und|:|,|;|-)$/i;
@@ -559,7 +593,7 @@ function parseQuick(text,nowD){
   if(o.rem!==''&&!o.date)o.date=t0;
   return o;
 }
-let quickText='';
+let quickText='',quickProj='';
 function quickBar(){
   return `<form class="qadd" id="qform" autocomplete="off"><input id="qtext" type="text" placeholder="Schnell hinzufügen: morgen 14 Uhr Zahnarzt" aria-label="Schnell hinzufügen" enterkeyhint="done"><button aria-label="Hinzufügen">${ic('plus',22,2.2)}</button></form><div class="qprev" id="qprev" aria-live="polite"></div>`;
 }
@@ -570,27 +604,32 @@ function quickChips(p){
   if(p.rep)c.push(ic('repeat',13,2)+' '+REPN[p.rep]);
   if(p.prio<3)c.push(p.prio===1?'Dringend':'Wichtig');
   c.push(esc(p.cat));
+  if(p.proj){const pr=projOf(p.proj);if(pr)c.push(ic('folder',13,2)+' '+esc(pr.name))}
   return c.map(x=>`<span class="qp">${x}</span>`).join('')+(p.guessed?`<span class="qp t">Zeit schon vorbei, daher morgen</span>`:'');
 }
 function updateQuick(){
   const el=$('qprev');if(!el)return;
-  el.innerHTML=quickText.trim()?quickChips(parseQuick(quickText)):'';
+  if(!quickText.trim()){el.innerHTML='';return}
+  const p=parseQuick(quickText);if(!p.proj&&quickProj)p.proj=quickProj;
+  el.innerHTML=quickChips(p);
 }
 function bindQuick(){const i=$('qtext');if(i){i.value=quickText;updateQuick()}}
 function addQuick(){
   const txt=quickText.trim();if(!txt)return;
-  const p=parseQuick(txt);
+  const p=parseQuick(txt);if(!p.proj&&quickProj)p.proj=quickProj;
   snap.last=snap();
-  tasks.push({id:Date.now(),title:p.title,date:p.date,time:p.time,rem:p.rem,reminded:false,prio:p.prio,cat:p.cat,rep:p.rep,done:false});
+  tasks.push({id:Date.now(),title:p.title,date:p.date,time:p.time,rem:p.rem,reminded:false,prio:p.prio,cat:p.cat,rep:p.rep,proj:p.proj||'',done:false});
   saveT();quickText='';checkReminders();render();
   toast('Hinzugefügt: '+p.title+(p.date?' · '+fmt(p.date):'')+(p.time?' '+p.time:''));
 }
 
 /* ---------- Heute ---------- */
 function greet(){const h=new Date().getHours();return h<11?'Guten Morgen':h<18?'Guten Tag':'Guten Abend'}
-function itemRow(x,showDate=true){
+function itemRow(x,showDate=true,showProj=true){
   const over=!x.done&&x.date&&x.date<today();
   const bits=[esc(x.cat)];
+  if(showProj&&x.proj){const pr=projOf(x.proj);if(pr)bits.push(`<span>${ic('folder',12,2)} ${esc(pr.name)}</span>`)}
+  if(x.sub&&x.sub.length)bits.push(`<span>${ic('check',12,2.4)} ${x.sub.filter(z=>z.done).length}/${x.sub.length}</span>`);
   if(x.rep)bits.push(`<span>${ic('repeat',12,2)} ${REPN[x.rep]}</span>`);
   if(showDate&&x.date)bits.push(`<span class="${over?'over':''}">${fmt(x.date)}</span>`);
   if(x.time)bits.push(`<span>${x.time}${hasRem(x)?' '+ic('bell',12,2):''}</span>`);
@@ -614,6 +653,8 @@ function renderHome(){
   else if(late)h+=`<button class="card rvp" data-go="review"><span class="ri">${ic('moon',20)}</span><span class="rt">Zeit für den Tagesrückblick<small>Kurz zurückblicken und den morgigen Tag vorbereiten</small></span></button>`;
   h+=`<div class="sec"><h2>Heute fällig</h2>${due.length?`<span class="meta">${due.length}</span>`:''}</div>`;
   h+=due.length?due.map(x=>itemRow(x)).join(''):`<div class="empty"><b>Nichts fällig</b>Du hast für heute alles im Griff.</div>`;
+  const aps=projects.filter(p=>!p.closed).sort(projSort).slice(0,3);
+  if(aps.length)h+=`<div class="sec"><h2>Projekte</h2><button class="link" data-goproj="1">Alle</button></div>`+aps.map(projCard).join('');
   if(habits.length){
     h+=`<div class="sec"><h2>Gewohnheiten</h2><button class="link" data-go="habits">Alle</button></div><div class="hchips">`+
       habits.map(x=>{const on=x.days.includes(t),n=streak(x);return `<button class="hchip ${on?'on':''}" data-hchip="${x.id}">${on?ic('check',14,2.6):''}<span>${esc(x.name)}</span>${n>1?`<small>${ic('flame',12,2)}${n}</small>`:''}</button>`}).join('')+`</div>`;
@@ -631,8 +672,9 @@ function renderTasks(){
   if(taskSeg==='open')l=l.filter(x=>!x.done).sort(sortT);
   else if(taskSeg==='planned')l=l.filter(x=>!x.done&&x.date&&x.date>t).sort(sortT);
   else l=l.filter(x=>x.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
-  const seg=[['open','Offen'],['planned','Geplant'],['done','Erledigt']];
-  let h=quickBar()+`<div class="seg">${seg.map(([k,n])=>`<button data-seg="${k}" class="${taskSeg===k?'on':''}">${n}</button>`).join('')}</div>`;
+  const seg=[['open','Offen'],['planned','Geplant'],['done','Erledigt'],['projects','Projekte']];
+  let h=(taskSeg==='projects'?'':quickBar())+`<div class="seg">${seg.map(([k,n])=>`<button data-seg="${k}" class="${taskSeg===k?'on':''}">${n}</button>`).join('')}</div>`;
+  if(taskSeg==='projects'){$('view').innerHTML=h+projectList();return}
   h+=`<div class="chips"><button class="chip ${catFilter===''?'on':''}" data-cat="">Alle</button>${CATS.map(c=>`<button class="chip ${catFilter===c?'on':''}" data-cat="${c}">${c}</button>`).join('')}</div>`;
   if(l.length)h+=l.map(x=>itemRow(x)).join('');
   else h+=`<div class="empty"><b>${taskSeg==='done'?'Noch nichts erledigt':'Nichts zu tun'}</b>${taskSeg==='done'?'Erledigte Aufgaben erscheinen hier.':'Tippe auf das Plus, um eine Aufgabe anzulegen.'}</div>`;
@@ -808,6 +850,41 @@ function renderHistory(){
   $('view').innerHTML=l.length?l.map(r=>`<div class="hrow"><div class="hd"><b>${new Date(r.date+'T00:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'long'})}</b><span class="meta">${r.mood?MOODL[r.mood]+' · ':''}${r.done}/${r.total} Aufgaben${r.hTotal?' · '+r.hDone+'/'+r.hTotal+' Gewohnheiten':''}</span></div>${r.good?`<p><span>Gut:</span> ${esc(r.good)}</p>`:''}${r.focus?`<p><span>Fokus:</span> ${esc(r.focus)}</p>`:''}<button class="x" data-rvdel="${r.date}" aria-label="Rückblick löschen">${ic('trash',15,2)}</button></div>`).join(''):`<div class="empty"><b>Noch keine Rückblicke</b>Mach abends einen kurzen Rückblick, dann erscheint er hier.</div>`;
 }
 
+/* ---------- Projekte ---------- */
+let projId=null;
+const projSort=(a,b)=>(a.due||'9999').localeCompare(b.due||'9999')||a.name.localeCompare(b.name);
+function projCard(p){
+  const st=projStats(p),pct=st.total?Math.round(st.done/st.total*100):0;
+  const nxt=tasks.filter(x=>x.proj===p.id&&!x.done).sort(sortT)[0];
+  const over=!p.closed&&p.due&&p.due<today();
+  return `<button class="card pcard" data-popen="${p.id}"><div class="phd"><b>${esc(p.name)}</b>${p.due?`<span class="meta"><span class="${over?'over':''}">${fmt(p.due)}</span></span>`:''}</div><div class="meta" style="margin-top:2px">${st.total?st.done+' von '+st.total+' erledigt':'Noch keine Aufgaben'}</div>${st.total?`<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${st.total}" aria-valuenow="${st.done}"><i style="width:${pct}%"></i></div>`:''}${nxt?`<div class="pnext">Als Nächstes: ${esc(nxt.title)}</div>`:''}</button>`;
+}
+function projectList(){
+  const act=projects.filter(p=>!p.closed).sort(projSort),cl=projects.filter(p=>p.closed).sort(projSort);
+  let h=act.length?act.map(projCard).join(''):`<div class="empty"><b>${cl.length?'Keine offenen Projekte':'Noch keine Projekte'}</b>Ein Projekt bündelt Aufgaben zu einem Ziel, zum Beispiel einen Umzug. Tippe auf das Plus, um eins anzulegen.</div>`;
+  if(cl.length)h+=`<div class="sec"><h2>Abgeschlossen</h2><span class="meta">${cl.length}</span></div>`+cl.map(projCard).join('');
+  return h;
+}
+function renderProj(){
+  const p=projOf(projId);
+  if(!p){view='tasks';taskSeg='projects';return renderTasks()}
+  const st=projStats(p),pct=st.total?Math.round(st.done/st.total*100):0,t=today();
+  const open=tasks.filter(x=>x.proj===p.id&&!x.done).sort(sortT);
+  const done=tasks.filter(x=>x.proj===p.id&&x.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+  setTop(p.name,p.closed?'Abgeschlossen':st.total?st.done+' von '+st.total+' erledigt':'Noch keine Aufgaben',{back:'Aufgaben'});
+  const over=!p.closed&&p.due&&p.due<t;
+  let h=`<div class="card hero"><b>${st.total?pct+' %':'Neues Projekt'}</b><small>${p.due?'Fällig '+fmt(p.due)+(over?' (überfällig)':''):'Kein Fälligkeitsdatum'}</small>${st.total?`<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${st.total}" aria-valuenow="${st.done}"><i style="width:${pct}%"></i></div>`:''}${p.note?`<p class="pnote">${esc(p.note)}</p>`:''}</div>`;
+  if(!p.closed&&st.total>0&&st.open===0)h+=`<button class="btn main" data-pclose="1" style="margin-top:12px">${ic('check',18,2.4)} Alle erledigt: Projekt abschließen</button>`;
+  if(!p.closed)h+=quickBar();
+  h+=`<div class="sec"><h2>Offen</h2><span class="meta">${open.length}</span></div>`;
+  h+=open.length?open.map(x=>itemRow(x,true,false)).join(''):`<div class="empty"><b>${st.total?'Alles erledigt':'Noch keine Aufgaben'}</b>${p.closed?'':'Schreibe oben die erste Aufgabe auf oder tippe auf das Plus.'}</div>`;
+  if(done.length)h+=`<details class="tbl"><summary>Erledigt (${done.length})</summary>${done.map(x=>itemRow(x,true,false)).join('')}</details>`;
+  h+=`<button class="btn" data-pedit="${p.id}" style="margin-top:18px">Projekt bearbeiten</button>`;
+  if(p.closed||(st.total>0&&st.open>0))h+=`<button class="btn" data-pclose="1">${p.closed?'Projekt wieder öffnen':'Projekt abschließen'}</button>`;
+  else if(!p.closed&&st.total===0)h+=`<button class="btn" data-pclose="1">Projekt abschließen</button>`;
+  $('view').innerHTML=h;bindQuick();
+}
+
 /* ---------- Mehr ---------- */
 function renderMore(){
   setTop('Mehr','');
@@ -825,7 +902,7 @@ function renderMore(){
     <button class="btn" data-bfile="1">${ic('up',18)} Sicherung einspielen</button>`;
   if(pendingImport){
     const d=pendingImport.d;
-    h+=`<div class="note-msg"><b style="color:var(--text)">Aktuelle Daten ersetzen?</b><br>Die Sicherung enthält ${d.tasks.length} Aufgaben, ${d.habits.length} Gewohnheiten, ${d.shop.length} Einkaufsartikel und ${d.notes.length} Notizen und ${d.reviews.length} Rückblicke${pendingImport.exported?' (vom '+new Date(pendingImport.exported).toLocaleDateString('de-DE')+')':''}. Du kannst danach „Rückgängig“ tippen.</div>
+    h+=`<div class="note-msg"><b style="color:var(--text)">Aktuelle Daten ersetzen?</b><br>Die Sicherung enthält ${d.tasks.length} Aufgaben, ${d.habits.length} Gewohnheiten, ${d.shop.length} Einkaufsartikel und ${d.notes.length} Notizen, ${d.reviews.length} Rückblicke und ${d.projects.length} Projekte${pendingImport.exported?' (vom '+new Date(pendingImport.exported).toLocaleDateString('de-DE')+')':''}. Du kannst danach „Rückgängig“ tippen.</div>
       <button class="btn danger" data-bapply="1">Ja, ersetzen</button><button class="btn" data-bcancel="1">Abbrechen</button>`;
   }
   if(backupMsg)h+=`<div class="note-msg" role="status">${esc(backupMsg)}</div>`;
@@ -833,7 +910,7 @@ function renderMore(){
   h+=`</div>`;
   const ns=notifState();
   h+=`<div class="sec"><h2>Erinnerungen</h2></div><div class="card"><div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--accent)">${ic('bell',24)}</span><div><b>${ns==='granted'?'Benachrichtigungen sind an':ns==='denied'?'Benachrichtigungen sind blockiert':ns==='default'?'Benachrichtigungen sind aus':'Nicht verfügbar'}</b><div class="meta" style="font-size:13px;margin-top:2px">${ns==='denied'?'Erlaube sie in den Einstellungen deines Browsers oder Handys.':'Erinnerungen kommen, solange die App geöffnet oder im Hintergrund aktiv ist. Verpasste siehst du beim nächsten Öffnen.'}</div></div></div>${ns==='default'&&!permBlocked?`<button class="btn" data-perm="1">Benachrichtigungen aktivieren</button>`:''}</div>`;
-  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Version 3</p>`;
+  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Version 4</p>`;
   $('view').innerHTML=h;
 }
 
@@ -870,16 +947,19 @@ function newNote(){const n={id:Date.now(),text:'',upd:Date.now()};notes.push(n);
 function leaveNote(){const n=notes.find(x=>x.id===openNote);if(n&&!n.text.trim()){notes=notes.filter(x=>x!==n);saveN()}openNote=null}
 
 /* ---------- Sheet ---------- */
-let sheet={mode:null,id:null},sheetPrio=3;
+let sheet={mode:null,id:null},sheetPrio=3,sheetSubs=[];
+function renderSubs(){
+  $('t-subs').innerHTML=sheetSubs.map((s,i)=>`<div class="subrow ${s.done?'done':''}"><button type="button" class="chk sm" data-subt="${i}" aria-label="${s.done?'Wieder öffnen':'Erledigt'}">${s.done?ic('check',13,2.8):''}</button><span>${esc(s.t)}</span><button type="button" class="subx" data-subx="${i}" aria-label="Entfernen">${ic('x',16,2)}</button></div>`).join('');
+}
 function setChips(){
   const d=$('t-date').value,t=today();
   const on={today:d===t,tomorrow:d===addDays(t,1),week:d&&d===addDays(t,7-((new Date().getDay()+6)%7)),none:!d};
   document.querySelectorAll('#t-chips .chip').forEach(b=>b.classList.toggle('on',!!on[b.dataset.dc]));
 }
 function setPrio(p){sheetPrio=p;document.querySelectorAll('#t-prio button').forEach(b=>b.classList.toggle('on',+b.dataset.sp===p))}
-function openSheet(mode,id){
+function openSheet(mode,id,pre){
   sheet={mode,id:id||null};
-  $('tform').hidden=mode!=='task';$('hform').hidden=mode!=='habit';
+  $('tform').hidden=mode!=='task';$('hform').hidden=mode!=='habit';$('pform').hidden=mode!=='project';
   if(mode==='task'){
     const x=id?tasks.find(t=>t.id==id):null;
     $('sh-title').textContent=x?'Aufgabe bearbeiten':'Neue Aufgabe';
@@ -891,14 +971,21 @@ function openSheet(mode,id){
     $('t-cat').value=x?x.cat:'Privat';
     $('t-rep').value=x?x.rep||'':'';
     setPrio(x?x.prio:3);setChips();
+    $('t-proj').innerHTML=['<option value="">Kein Projekt</option>'].concat(projects.filter(q=>!q.closed||(x&&x.proj===q.id)).map(q=>`<option value="${q.id}">${esc(q.name)}</option>`)).join('');
+    $('t-proj').value=String(x?(x.proj||''):(pre||''));
+    sheetSubs=x&&x.sub?x.sub.map(z=>({...z})):[];$('t-subadd').value='';renderSubs();
     $('t-del').hidden=!x;
   }else if(mode==='habit'){
     const x=id?habits.find(h=>h.id==id):null;
     $('sh-title').textContent=x?'Gewohnheit bearbeiten':'Neue Gewohnheit';
     $('h-name').value=x?x.name:'';$('h-del').hidden=!x;
+  }else if(mode==='project'){
+    const x=id?projects.find(q=>q.id==id):null;
+    $('sh-title').textContent=x?'Projekt bearbeiten':'Neues Projekt';
+    $('p-name').value=x?x.name:'';$('p-note').value=x?x.note||'':'';$('p-due').value=x?x.due||'':'';$('p-del').hidden=!x;
   }
   $('sheet').hidden=false;document.body.classList.add('lock');
-  if(!id)setTimeout(()=>{try{(mode==='task'?$('t-title'):$('h-name')).focus()}catch(e){}},60);
+  if(!id)setTimeout(()=>{try{if(!$('sheet').hidden&&!$('sheet').contains(document.activeElement))$(mode==='task'?'t-title':mode==='habit'?'h-name':'p-name').focus()}catch(e){}},60);
 }
 function closeSheet(){$('sheet').hidden=true;document.body.classList.remove('lock');sheet={mode:null,id:null}}
 $('sh-x').innerHTML=ic('x',18,2);
@@ -916,12 +1003,27 @@ $('tform').addEventListener('submit',e=>{
   const title=$('t-title').value.trim();if(!title)return;
   let date=$('t-date').value;const time=$('t-time').value,rem=$('t-rem').value;
   if(rem!==''&&!date)date=today();
-  const f={title,date,time,rem,prio:sheetPrio,cat:$('t-cat').value,rep:$('t-rep').value};
+  const pend=$('t-subadd').value.trim();if(pend)sheetSubs.push({id:Date.now(),t:pend,done:false});
+  const f={title,date,time,rem,prio:sheetPrio,cat:$('t-cat').value,rep:$('t-rep').value,proj:$('t-proj').value?+$('t-proj').value:'',sub:sheetSubs.map(z=>({...z}))};
   if(sheet.id){
     const x=tasks.find(t=>t.id==sheet.id);
     if(x){const ch=x.date!==date||x.time!==time||String(x.rem??'')!==rem;Object.assign(x,f);if(ch){x.reminded=false;delete x.snoozeUntil}}
   }else tasks.push(Object.assign({id:Date.now(),reminded:false,done:false},f));
   saveT();closeSheet();checkReminders();render();
+});
+$('pform').addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=$('p-name').value.trim();if(!name)return;
+  const f={name,note:$('p-note').value.trim(),due:$('p-due').value};
+  if(sheet.id){const x=projects.find(q=>q.id==sheet.id);if(x)Object.assign(x,f)}
+  else{const n=Object.assign({id:Date.now(),closed:false},f);projects.push(n);projId=n.id;view='proj';window.scrollTo(0,0)}
+  saveP();closeSheet();render();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target&&e.target.id==='t-subadd'){
+    e.preventDefault();const v=e.target.value.trim();if(!v)return;
+    sheetSubs.push({id:Date.now(),t:v,done:false});e.target.value='';renderSubs();
+  }
 });
 $('hform').addEventListener('submit',e=>{
   e.preventDefault();
@@ -937,16 +1039,23 @@ document.addEventListener('click',e=>{
   if(e.target.classList&&e.target.classList.contains('bd')){closeSheet();return}
   const b=e.target.closest('button');if(!b)return;
   const D=b.dataset;
-  if(b.id==='fab'){const f=fabInfo();if(!f)return;if(f[0]==='note')newNote();else openSheet(f[0]);return}
+  if(b.id==='fab'){const f=fabInfo();if(!f)return;if(f[0]==='note')newNote();else openSheet(f[0],null,view==='proj'?projId:undefined);return}
   if(D.tip&&D.tt){const el=$(D.tt);if(el)el.textContent=D.tip;return}
+  if(D.subt!==undefined){const z=sheetSubs[+D.subt];if(z){z.done=!z.done;renderSubs()}return}
+  if(D.subx!==undefined){sheetSubs.splice(+D.subx,1);renderSubs();return}
   if(D.close){closeSheet();return}
+  if(D.pdel){const id=+sheet.id;closeSheet();destructive('Projekt gelöscht, Aufgaben bleiben',()=>{projects=projects.filter(q=>q.id!=id);tasks.forEach(t=>{if(t.proj===id)t.proj=''});saveP();saveT();if(view==='proj'){view='tasks';taskSeg='projects'}});return}
   if(D.tdel){const id=sheet.id;closeSheet();destructive('Aufgabe gelöscht',()=>{tasks=tasks.filter(t=>t.id!=id);saveT()});return}
   if(D.hdel){const id=sheet.id;closeSheet();destructive('Gewohnheit gelöscht',()=>{habits=habits.filter(t=>t.id!=id);saveH()});return}
   if(D.nav){go(D.nav);return}
   if(D.go){go(D.go);return}
-  if(D.back){if(view==='notes'&&openNote!==null){leaveNote();render()}else go(view==='review'?'home':view==='hstats'?'habits':'more');return}
+  if(D.back){if(view==='notes'&&openNote!==null){leaveNote();render()}else{if(view==='proj')taskSeg='projects';go(view==='review'?'home':view==='hstats'?'habits':view==='proj'?'tasks':'more')}return}
   if(D.done){toggleTask(D.done)}
   else if(D.edit){openSheet('task',D.edit);return}
+  else if(D.popen){projId=+D.popen;view='proj';window.scrollTo(0,0)}
+  else if(D.goproj){taskSeg='projects';go('tasks');return}
+  else if(D.pedit){openSheet('project',D.pedit);return}
+  else if(D.pclose){const q=projOf(projId);if(q){q.closed=!q.closed;saveP()}}
   else if(D.hstats){hsId=+D.hstats;view='hstats';window.scrollTo(0,0)}
   else if(D.mood){draft.mood=+D.mood;$('moodrow').innerHTML=moodRow();return}
   else if(D.rvdone){toggleTask(D.rvdone)}
