@@ -38,6 +38,7 @@ main{padding:0 16px}
 .day button{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);background:none;color:#fff;font-size:16px;padding:0}
 .day button.on{background:var(--green);border-color:var(--green)}
 .day.today span{color:var(--accent);font-weight:700}
+.clear{display:block;margin:12px auto;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;padding:8px}
 .empty{text-align:center;color:var(--muted);padding:40px 0}
 form{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr auto;gap:8px}
 form[hidden]{display:none}
@@ -64,17 +65,24 @@ form button{background:var(--accent);color:#fff;border:0;border-radius:10px;padd
   <input id="hname" placeholder="Neue Gewohnheit… (z. B. Wasser trinken)" autocomplete="off">
   <button aria-label="Hinzufügen">＋</button>
 </form>
+<form id="sf" hidden>
+  <input id="sname" placeholder="Einkaufen… (z. B. Milch)" autocomplete="off">
+  <button aria-label="Hinzufügen">＋</button>
+</form>
 <script>
 const KEY='alltag.tasks.v1';
 let tasks=[];try{tasks=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){}
 const HKEY='alltag.habits.v1';
 let habits=[];try{habits=JSON.parse(localStorage.getItem(HKEY))||[]}catch(e){}
 const saveH=()=>{try{localStorage.setItem(HKEY,JSON.stringify(habits))}catch(e){}};
+const SKEY='alltag.shop.v1';
+let shop=[];try{shop=JSON.parse(localStorage.getItem(SKEY))||[]}catch(e){}
+const saveS=()=>{try{localStorage.setItem(SKEY,JSON.stringify(shop))}catch(e){}};
 let tab='heute';
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}};
 const iso=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
 const today=()=>iso(new Date());
-const TABS=[['heute','Heute'],['geplant','Geplant'],['alle','Alle'],['erledigt','Erledigt'],['habits','Gewohnheiten']];
+const TABS=[['heute','Heute'],['geplant','Geplant'],['alle','Alle'],['erledigt','Erledigt'],['habits','Gewohnheiten'],['shop','Einkauf']];
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function visible(){
   const t=today();
@@ -105,12 +113,18 @@ function renderHabits(){
       <div class="days">${week.map(d=>`<div class="day ${d===t?'today':''}"><button class="${h.days.includes(d)?'on':''}" data-hday="${h.id}|${d}">${h.days.includes(d)?'✓':''}</button><span>${new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'short'})}</span></div>`).join('')}</div>
     </div>`}).join(''):'<div class="empty">Noch keine Gewohnheiten.<br>Lege unten die erste an.</div>';
 }
+function renderShop(){
+  const open=shop.filter(x=>!x.done),done=shop.filter(x=>x.done);
+  const row=x=>`<div class="item ${x.done?'done':''}"><button class="chk" data-sdone="${x.id}">${x.done?'✓':''}</button><div class="t"><div>${esc(x.name)}</div></div><button class="del" data-sdel="${x.id}" aria-label="Löschen">×</button></div>`;
+  document.getElementById('list').innerHTML=shop.length?open.map(row).join('')+done.map(row).join('')+(done.length?`<button class="clear" data-sclear="1">Erledigte entfernen (${done.length})</button>`:''):'<div class="empty">Die Einkaufsliste ist leer 🛒</div>';
+}
 function render(){
-  const hb=tab==='habits';
-  document.getElementById('f').hidden=hb;document.getElementById('hf').hidden=!hb;
+  const hb=tab==='habits',sb=tab==='shop';
+  document.getElementById('f').hidden=hb||sb;document.getElementById('hf').hidden=!hb;document.getElementById('sf').hidden=!sb;
   document.getElementById('sub').textContent=new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+' · '+tasks.filter(x=>!x.done).length+' offen';
   document.getElementById('tabs').innerHTML=TABS.map(([k,n])=>`<button class="${k===tab?'on':''}" data-tab="${k}">${n}</button>`).join('');
   if(hb){renderHabits();return}
+  if(sb){renderShop();return}
   const l=visible();
   document.getElementById('list').innerHTML=l.length?l.map(x=>`
     <div class="item p${x.prio} ${x.done?'done':''}">
@@ -125,6 +139,9 @@ document.addEventListener('click',e=>{
   if(b.dataset.tab){tab=b.dataset.tab}
   else if(b.dataset.done){const x=tasks.find(t=>t.id==b.dataset.done);x.done=!x.done;save()}
   else if(b.dataset.hday){const[id,d]=b.dataset.hday.split('|');const h=habits.find(x=>x.id==id);h.days=h.days.includes(d)?h.days.filter(x=>x!==d):[...h.days,d];saveH()}
+  else if(b.dataset.sdone){const x=shop.find(t=>t.id==b.dataset.sdone);x.done=!x.done;saveS()}
+  else if(b.dataset.sdel){shop=shop.filter(t=>t.id!=b.dataset.sdel);saveS()}
+  else if(b.dataset.sclear){shop=shop.filter(t=>!t.done);saveS()}
   else if(b.dataset.hdel){habits=habits.filter(x=>x.id!=b.dataset.hdel);saveH()}
   else if(b.dataset.del){tasks=tasks.filter(t=>t.id!=b.dataset.del);save()}
   else return;
@@ -140,6 +157,12 @@ document.getElementById('hf').addEventListener('submit',e=>{
   e.preventDefault();
   const name=document.getElementById('hname').value.trim();if(!name)return;
   habits.push({id:Date.now(),name,days:[]});saveH();document.getElementById('hname').value='';render();
+});
+document.getElementById('sf').addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=document.getElementById('sname').value.trim();if(!name)return;
+  shop.push({id:Date.now(),name,done:false});saveS();document.getElementById('sname').value='';
+  render();document.getElementById('sname').focus();
 });
 render();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
