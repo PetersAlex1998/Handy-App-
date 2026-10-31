@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4f46e5">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon.svg">
+<title>Mein Alltag</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--text:#1c1c28;--muted:#7a7a8c;--accent:#4f46e5;--line:#e6e7ef;--red:#e5484d;--amber:#f5a524;--green:#2fa36b}
+@media (prefers-color-scheme:dark){:root{--bg:#12121a;--card:#1c1c28;--text:#f0f0f6;--muted:#9a9ab0;--line:#2c2c3c}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,sans-serif;padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+header{padding:calc(16px + env(safe-area-inset-top)) 16px 8px}
+h1{margin:0;font-size:24px}
+.sub{color:var(--muted);font-size:14px}
+nav{display:flex;gap:8px;padding:8px 16px;overflow-x:auto}
+nav button{border:0;background:var(--card);color:var(--text);padding:8px 14px;border-radius:20px;font-size:15px;white-space:nowrap}
+nav button.on{background:var(--accent);color:#fff}
+main{padding:0 16px}
+.item{display:flex;gap:12px;align-items:center;background:var(--card);padding:12px;border-radius:14px;margin:8px 0}
+.item .t{flex:1;min-width:0}
+.item .t div:first-child{word-break:break-word}
+.meta{font-size:12px;color:var(--muted)}
+.meta .over{color:var(--red);font-weight:600}
+.chk{width:26px;height:26px;border-radius:50%;border:2px solid var(--muted);background:none;flex:none;color:#fff;font-size:15px;padding:0}
+.done .chk{background:var(--green);border-color:var(--green)}
+.done .t div:first-child{text-decoration:line-through;color:var(--muted)}
+.p1{border-left:4px solid var(--red)}.p2{border-left:4px solid var(--amber)}.p3{border-left:4px solid var(--line)}
+.del{border:0;background:none;color:var(--muted);font-size:20px;padding:4px 8px}
+.empty{text-align:center;color:var(--muted);padding:40px 0}
+form{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr auto;gap:8px}
+form input,form select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+form .row{grid-column:1/-1;display:flex;gap:8px}
+form .row>*{flex:1}
+form button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 18px;font-size:22px}
+</style>
+</head>
+<body>
+<header><h1>Mein Alltag</h1><div class="sub" id="sub"></div></header>
+<nav id="tabs"></nav>
+<main id="list"></main>
+<form id="f">
+  <input id="title" placeholder="Neue Aufgabe…" required autocomplete="off">
+  <button aria-label="Hinzufügen">＋</button>
+  <div class="row">
+    <input id="date" type="date">
+    <select id="prio"><option value="3">Normal</option><option value="2">Wichtig</option><option value="1">Dringend</option></select>
+    <select id="cat"><option>Privat</option><option>Arbeit</option><option>Haushalt</option><option>Gesundheit</option><option>Einkauf</option></select>
+  </div>
+</form>
+<script>
+const KEY='alltag.tasks.v1';
+let tasks=[];try{tasks=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){}
+let tab='heute';
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}};
+const iso=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
+const today=()=>iso(new Date());
+const TABS=[['heute','Heute'],['geplant','Geplant'],['alle','Alle'],['erledigt','Erledigt']];
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function visible(){
+  const t=today();
+  let l=tasks.filter(x=>{
+    if(tab==='erledigt')return x.done;
+    if(x.done)return false;
+    if(tab==='heute')return !x.date||x.date<=t;
+    if(tab==='geplant')return x.date&&x.date>t;
+    return true;
+  });
+  return l.sort((a,b)=>(a.prio-b.prio)||((a.date||'9')>(b.date||'9')?1:-1));
+}
+function fmt(d){return new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'})}
+function render(){
+  document.getElementById('sub').textContent=new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+' · '+tasks.filter(x=>!x.done).length+' offen';
+  document.getElementById('tabs').innerHTML=TABS.map(([k,n])=>`<button class="${k===tab?'on':''}" data-tab="${k}">${n}</button>`).join('');
+  const l=visible();
+  document.getElementById('list').innerHTML=l.length?l.map(x=>`
+    <div class="item p${x.prio} ${x.done?'done':''}">
+      <button class="chk" data-done="${x.id}">${x.done?'✓':''}</button>
+      <div class="t"><div>${esc(x.title)}</div>
+      <div class="meta">${esc(x.cat)}${x.date?` · <span class="${!x.done&&x.date<today()?'over':''}">${fmt(x.date)}</span>`:''}</div></div>
+      <button class="del" data-del="${x.id}" aria-label="Löschen">×</button>
+    </div>`).join(''):'<div class="empty">Nichts zu tun 🎉</div>';
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.tab){tab=b.dataset.tab}
+  else if(b.dataset.done){const x=tasks.find(t=>t.id==b.dataset.done);x.done=!x.done;save()}
+  else if(b.dataset.del){tasks=tasks.filter(t=>t.id!=b.dataset.del);save()}
+  else return;
+  render();
+});
+document.getElementById('f').addEventListener('submit',e=>{
+  e.preventDefault();
+  const title=document.getElementById('title').value.trim();if(!title)return;
+  tasks.push({id:Date.now(),title,date:document.getElementById('date').value,prio:+document.getElementById('prio').value,cat:document.getElementById('cat').value,done:false});
+  save();document.getElementById('title').value='';render();
+});
+render();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
