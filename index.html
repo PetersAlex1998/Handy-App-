@@ -8,8 +8,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Alltag">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icons/icon.svg">
-<link rel="apple-touch-icon" href="icons/icon.svg">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <title>Mein Alltag</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
@@ -456,7 +457,7 @@ function notify(title,body,tag){
     if(!('Notification' in window)||Notification.permission!=='granted')return;
     const fb=()=>{try{new Notification(title,{body,tag})}catch(e){}};
     if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration)
-      navigator.serviceWorker.getRegistration().then(r=>r&&r.showNotification?r.showNotification(title,{body,tag,icon:'icons/icon.svg'}):fb()).catch(fb);
+      navigator.serviceWorker.getRegistration().then(r=>r&&r.showNotification?r.showNotification(title,{body,tag,icon:'icons/icon-192.png'}):fb()).catch(fb);
     else fb();
   }catch(e){}
 }
