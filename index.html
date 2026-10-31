@@ -131,6 +131,35 @@ h1{margin:0;font-family:var(--serif);font-size:36px;font-weight:600;line-height:
 .qp{background:var(--soft);border-radius:99px;padding:4px 11px;font-size:12.5px;display:inline-flex;gap:5px;align-items:center}
 .qp.t{background:none;border:1px solid var(--line);color:var(--muted)}
 
+/* Tagesrueckblick */
+.focus{border-left:4px solid var(--accent);margin:0 0 12px}
+.focus small{display:block;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.focus b{display:block;margin-top:2px;font-family:var(--serif);font-size:21px;font-weight:600;line-height:1.25}
+.rvp{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;margin:12px 0 0;background:var(--soft);box-shadow:none;color:var(--text)}
+.rvp .ri{width:38px;height:38px;border-radius:12px;background:var(--card);color:var(--accent);display:grid;place-items:center;flex:none}
+.rvp .rt{flex:1;min-width:0}.rvp .rt small{display:block;color:var(--muted);font-size:13px}
+.rvrow{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:18px;padding:12px 12px 12px 14px;margin:8px 0;box-shadow:var(--shadow)}
+.rvrow .rvt{flex:1;min-width:0;word-break:break-word}
+.rvb{display:flex;gap:6px;flex:none}
+.rvb button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:7px 9px;font-size:13px;display:inline-flex;align-items:center;gap:4px;color:var(--text)}
+.rvb .g{color:var(--green)}.rvb .r{color:var(--red)}
+.rvdone{display:flex;gap:8px;align-items:center;padding:6px 2px;color:var(--muted);font-size:14px}
+.rvdone svg{color:var(--green);flex:none}
+.mood{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.mood button{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:12px 0;font-size:18px;font-family:var(--serif);font-weight:600;box-shadow:var(--shadow)}
+.mood button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.moodl{text-align:center;color:var(--muted);font-size:13px;margin-top:6px;min-height:20px}
+.ta{display:block;width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;resize:none;line-height:1.45;box-shadow:var(--shadow)}
+.ta:focus{border-color:var(--accent);outline:none}
+.hrow{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:13px 14px;margin:8px 0}
+.hrow .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hrow .hd b{font-family:var(--serif);font-size:19px;font-weight:600}
+.hrow p{margin:4px 0 0;font-size:14px;word-break:break-word}
+.hrow p span{color:var(--muted)}
+.hrow .x{border:0;background:none;color:var(--muted);padding:2px}
+
+h1,.hero b,.focus b,.mood button,.shead b,.hrow .hd b,.empty b{font-variant-numeric:lining-nums}
+
 /* Hinweis (Erinnerung) */
 #banner{margin-top:6px}
 .al{display:flex;gap:8px;align-items:center;background:var(--soft);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:10px 12px;margin:8px 0}
@@ -236,17 +265,20 @@ up:'<path d="M12 16V4M7 8l5-5 5 5M4 20h16"/>',
 copy:'<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>',
 trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
 x:'<path d="M6 6l12 12M18 6L6 18"/>',
+moon:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',
+book:'<path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/>',
 shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>'
 };
 function ic(n,s=22,w=1.8){return `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`}
 
 /* ---------- Daten ---------- */
-const K={t:'alltag.tasks.v1',h:'alltag.habits.v1',s:'alltag.shop.v1',n:'alltag.notes.v1',b:'alltag.backup.v1'};
+const K={t:'alltag.tasks.v1',h:'alltag.habits.v1',s:'alltag.shop.v1',n:'alltag.notes.v1',r:'alltag.reviews.v1',b:'alltag.backup.v1'};
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
 const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-let tasks=load(K.t,[]),habits=load(K.h,[]),shop=load(K.s,[]),notes=load(K.n,[]);
+let tasks=load(K.t,[]),habits=load(K.h,[]),shop=load(K.s,[]),notes=load(K.n,[]),reviews=load(K.r,[]);
 const saveT=()=>put(K.t,tasks),saveH=()=>put(K.h,habits),saveS=()=>put(K.s,shop),saveN=()=>put(K.n,notes);
-const saveAll=()=>{saveT();saveH();saveS();saveN()};
+const saveR=()=>put(K.r,reviews);
+const saveAll=()=>{saveT();saveH();saveS();saveN();saveR()};
 const lastBackup=()=>{try{return +localStorage.getItem(K.b)||0}catch(e){return 0}};
 const markBackup=()=>{try{localStorage.setItem(K.b,String(Date.now()))}catch(e){}};
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
@@ -288,7 +320,7 @@ function streak(h){let d=today();if(!h.days.includes(d))d=addDays(d,-1);let n=0;
 
 /* ---------- Rueckgaengig ---------- */
 let undoSnap=null,toastTimer=null;
-const snap=()=>JSON.stringify({tasks,habits,shop,notes});
+const snap=()=>JSON.stringify({tasks,habits,shop,notes,reviews});
 function toast(msg){
   undoSnap=snap.last||null;
   $('tmsg').textContent=msg;$('toast').hidden=false;
@@ -297,7 +329,7 @@ function toast(msg){
 function destructive(msg,fn){snap.last=snap();fn();render();toast(msg)}
 $('tundo').addEventListener('click',()=>{
   if(!undoSnap)return;
-  const o=JSON.parse(undoSnap);tasks=o.tasks;habits=o.habits;shop=o.shop;notes=o.notes;saveAll();
+  const o=JSON.parse(undoSnap);tasks=o.tasks;habits=o.habits;shop=o.shop;notes=o.notes;reviews=o.reviews||[];saveAll();
   undoSnap=null;$('toast').hidden=true;checkReminders();render();
 });
 
@@ -338,8 +370,8 @@ function checkReminders(){
 
 /* ---------- Sicherung ---------- */
 let pendingImport=null,backupMsg='',backupText='';
-function backupDue(){const n=tasks.length+habits.length+shop.length+notes.length;const l=lastBackup();return n>=5&&(!l||Date.now()-l>14*864e5)}
-function backupJSON(){return JSON.stringify({app:'alltag',version:2,exported:new Date().toISOString(),data:{tasks,habits,shop,notes}},null,1)}
+function backupDue(){const n=tasks.length+habits.length+shop.length+notes.length+reviews.length;const l=lastBackup();return n>=5&&(!l||Date.now()-l>14*864e5)}
+function backupJSON(){return JSON.stringify({app:'alltag',version:2,exported:new Date().toISOString(),data:{tasks,habits,shop,notes,reviews}},null,1)}
 function downloadBackup(){
   const json=backupJSON();
   try{
@@ -362,6 +394,7 @@ function readBackup(text){
     const o=JSON.parse(text);const d=o&&o.data?o.data:o;
     const ok=k=>Array.isArray(d[k]);
     if(!d||!ok('tasks')||!ok('habits')||!ok('shop')||!ok('notes'))throw 0;
+    if(!Array.isArray(d.reviews))d.reviews=[];
     pendingImport={d,exported:o.exported||''};backupMsg='';
   }catch(e){pendingImport=null;backupMsg='Diese Datei ist keine gültige Sicherung.'}
   render();
@@ -374,16 +407,16 @@ function applyImport(){
   if(!pendingImport)return;
   const d=pendingImport.d;pendingImport=null;
   snap.last=snap();
-  tasks=d.tasks;habits=d.habits;shop=d.shop;notes=d.notes;saveAll();alerts=[];
+  tasks=d.tasks;habits=d.habits;shop=d.shop;notes=d.notes;reviews=d.reviews||[];saveAll();alerts=[];
   backupMsg='Sicherung eingespielt.';render();toast('Daten ersetzt');checkReminders();
 }
 
 /* ---------- Navigation ---------- */
 let view='home',taskSeg='open',catFilter='',weekOffset=0,addDay=null,openNote=null,noteQ='';
 const TABS=[['home','Heute','sun'],['tasks','Aufgaben','list'],['week','Woche','cal'],['habits','Gewohnheiten','repeat'],['more','Mehr','more']];
-const group=v=>(v==='shop'||v==='notes')?'more':v;
+const group=v=>(v==='shop'||v==='notes'||v==='history')?'more':v==='review'?'home':v;
 function setTop(title,sub,o={}){
-  $('crumb').innerHTML=o.back?`<button class="back" data-back="1">${ic('chevL',18,2)}Mehr</button>`:'';
+  $('crumb').innerHTML=o.back?`<button class="back" data-back="1">${ic('chevL',18,2)}${o.back===true?'Mehr':o.back}</button>`:'';
   $('h1').textContent=title;$('sub').textContent=sub||'';$('sub').hidden=!sub;
   $('topact').innerHTML=o.act||'';
 }
@@ -398,7 +431,7 @@ function fabInfo(){
 }
 function render(){
   const f=fabInfo();$('fab').hidden=!f;if(f){$('fab').innerHTML=ic('plus',28,2.2);$('fab').setAttribute('aria-label',f[1])}
-  ({home:renderHome,tasks:renderTasks,week:renderWeek,habits:renderHabits,more:renderMore,shop:renderShop,notes:renderNotes})[view]();
+  ({home:renderHome,tasks:renderTasks,week:renderWeek,habits:renderHabits,more:renderMore,shop:renderShop,notes:renderNotes,review:renderReview,history:renderHistory})[view]();
   renderBar();renderBanner();
 }
 
@@ -530,8 +563,13 @@ function renderHome(){
   const total=due.length+doneT+habits.length,done=doneT+doneH;
   setTop(greet(),new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'}));
   let h=quickBar();
+  const yRv=reviews.find(r=>r.date===addDays(t,-1)&&r.focus&&r.focus.trim());
+  if(yRv)h+=`<div class="card focus"><small>Dein Fokus für heute</small><b>${esc(yRv.focus)}</b></div>`;
   if(total===0)h+=`<div class="card hero"><b>Noch nichts geplant</b><small>Tippe auf das Plus und plane deinen Tag.</small></div>`;
   else h+=`<div class="card hero"><b>${done===total?'Alles erledigt':done+' von '+total+' erledigt'}</b><small>${done===total?'Genieße den Rest des Tages.':due.length+' '+(due.length===1?'Aufgabe':'Aufgaben')+' und '+(habits.length-doneH)+' '+(habits.length-doneH===1?'Gewohnheit':'Gewohnheiten')+' offen'}</small><div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><i style="width:${Math.round(done/total*100)}%"></i></div></div>`;
+  const tRv=reviews.find(r=>r.date===t),late=new Date().getHours()>=17;
+  if(tRv)h+=`<button class="card rvp" data-go="review"><span class="ri">${ic('check',20,2.2)}</span><span class="rt">Rückblick gespeichert<small>Tippe, um ihn zu ändern</small></span></button>`;
+  else if(late)h+=`<button class="card rvp" data-go="review"><span class="ri">${ic('moon',20)}</span><span class="rt">Zeit für den Tagesrückblick<small>Kurz zurückblicken und den morgigen Tag vorbereiten</small></span></button>`;
   h+=`<div class="sec"><h2>Heute fällig</h2>${due.length?`<span class="meta">${due.length}</span>`:''}</div>`;
   h+=due.length?due.map(x=>itemRow(x)).join(''):`<div class="empty"><b>Nichts fällig</b>Du hast für heute alles im Griff.</div>`;
   if(habits.length){
@@ -601,6 +639,48 @@ function renderHabits(){
     `<div class="empty"><b>Noch keine Gewohnheiten</b>Tippe auf das Plus, zum Beispiel für „Wasser trinken“.</div>`;
 }
 
+/* ---------- Tagesrueckblick ---------- */
+const MOODL=['','Schwierig','Anstrengend','Okay','Gut','Großartig'];
+let draft={mood:0,good:'',focus:''};
+function initReview(){const r=reviews.find(x=>x.date===today());draft=r?{mood:r.mood||0,good:r.good||'',focus:r.focus||''}:{mood:0,good:'',focus:''}}
+function dayStats(){
+  const t=today();
+  const due=tasks.filter(x=>!x.done&&(!x.date||x.date<=t)).sort(sortT);
+  const doneList=tasks.filter(x=>x.done&&x.doneAt&&iso(new Date(x.doneAt))===t);
+  const hDone=habits.filter(h=>h.days.includes(t)).length;
+  return{due,doneList,hDone,tomorrow:tasks.filter(x=>!x.done&&x.date===addDays(t,1)).sort(sortT)};
+}
+function moodRow(){return `<div class="mood" role="group" aria-label="Wie war dein Tag?">${[1,2,3,4,5].map(n=>`<button type="button" data-mood="${n}" class="${draft.mood===n?'on':''}" aria-pressed="${draft.mood===n}">${n}</button>`).join('')}</div><div class="moodl">${MOODL[draft.mood]||'Tippe auf eine Zahl von 1 bis 5'}</div>`}
+function renderReview(){
+  const t=today(),st=dayStats();
+  setTop('Tagesrückblick',new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'}),{back:'Heute'});
+  const total=st.due.length+st.doneList.length+habits.length,done=st.doneList.length+st.hDone;
+  let h=`<div class="card hero"><b>${total===0?'Ein ruhiger Tag':done+' von '+total+' erledigt'}</b><small>${total===0?'Es war nichts geplant.':done===total?'Alles geschafft. Das darfst du feiern.':st.due.length+' offen. Entscheide unten, was damit passiert.'}</small>${total?`<div class="prog"><i style="width:${Math.round(done/total*100)}%"></i></div>`:''}</div>`;
+  if(st.doneList.length)h+=`<div class="sec"><h2>Heute geschafft</h2></div>`+st.doneList.map(x=>`<div class="rvdone">${ic('check',16,2.4)}<span>${esc(x.title)}</span></div>`).join('');
+  if(st.due.length){
+    h+=`<div class="sec"><h2>Noch offen</h2><button class="link" data-rvall="1">Alle auf morgen</button></div>`+st.due.map(x=>`<div class="rvrow"><div class="rvt">${esc(x.title)}<div class="meta">${esc(x.cat)}${x.date&&x.date<t?'<i>·</i><span class="over">'+fmt(x.date)+'</span>':''}</div></div><div class="rvb"><button class="g" data-rvdone="${x.id}" aria-label="Erledigt">${ic('check',15,2.4)}</button><button data-rvmove="${x.id}">Morgen</button><button class="r" data-rvdrop="${x.id}" aria-label="Streichen">${ic('trash',15,2)}</button></div></div>`).join('');
+  }
+  if(habits.length)h+=`<div class="sec"><h2>Gewohnheiten</h2></div><div class="hchips">`+habits.map(x=>{const on=x.days.includes(t);return `<button class="hchip ${on?'on':''}" data-hchip="${x.id}">${on?ic('check',14,2.6):''}<span>${esc(x.name)}</span></button>`}).join('')+`</div>`;
+  h+=`<div class="sec"><h2>Wie war dein Tag?</h2></div><div id="moodrow">${moodRow()}</div>`;
+  h+=`<div class="sec"><h2>Was lief gut?</h2></div><textarea class="ta" id="rv-good" rows="3" placeholder="Auch Kleines zählt." aria-label="Was lief gut?"></textarea>`;
+  h+=`<div class="sec"><h2>Fokus für morgen</h2></div><textarea class="ta" id="rv-focus" rows="2" placeholder="Das Wichtigste in einem Satz" aria-label="Fokus für morgen"></textarea>`;
+  h+=`<div class="sec"><h2>Morgen</h2><span class="meta">${st.tomorrow.length} ${st.tomorrow.length===1?'Aufgabe':'Aufgaben'}</span></div>`+(st.tomorrow.length?st.tomorrow.map(x=>itemRow(x,false)).join(''):`<div class="empty" style="padding:14px">Noch nichts für morgen geplant.</div>`);
+  h+=`<button class="btn main" data-rvsave="1" style="margin-top:22px">Rückblick speichern</button>`;
+  $('view').innerHTML=h;
+  $('rv-good').value=draft.good;$('rv-focus').value=draft.focus;
+}
+function saveReview(){
+  const t=today(),st=dayStats();
+  const r={date:t,mood:draft.mood,good:draft.good.trim(),focus:draft.focus.trim(),done:st.doneList.length,total:st.due.length+st.doneList.length,hDone:st.hDone,hTotal:habits.length,saved:Date.now()};
+  reviews=reviews.filter(x=>x.date!==t);reviews.push(r);saveR();
+  view='home';window.scrollTo(0,0);render();toast('Rückblick gespeichert');
+}
+function renderHistory(){
+  setTop('Rückblicke',reviews.length+' '+(reviews.length===1?'Eintrag':'Einträge'),{back:true});
+  const l=[...reviews].sort((a,b)=>b.date.localeCompare(a.date));
+  $('view').innerHTML=l.length?l.map(r=>`<div class="hrow"><div class="hd"><b>${new Date(r.date+'T00:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'long'})}</b><span class="meta">${r.mood?MOODL[r.mood]+' · ':''}${r.done}/${r.total} Aufgaben${r.hTotal?' · '+r.hDone+'/'+r.hTotal+' Gewohnheiten':''}</span></div>${r.good?`<p><span>Gut:</span> ${esc(r.good)}</p>`:''}${r.focus?`<p><span>Fokus:</span> ${esc(r.focus)}</p>`:''}<button class="x" data-rvdel="${r.date}" aria-label="Rückblick löschen">${ic('trash',15,2)}</button></div>`).join(''):`<div class="empty"><b>Noch keine Rückblicke</b>Mach abends einen kurzen Rückblick, dann erscheint er hier.</div>`;
+}
+
 /* ---------- Mehr ---------- */
 function renderMore(){
   setTop('Mehr','');
@@ -608,7 +688,9 @@ function renderMore(){
   const lastTxt=l?'Letzte Sicherung: '+new Date(l).toLocaleDateString('de-DE',{day:'numeric',month:'long',year:'numeric'}):'Noch keine Sicherung gemacht';
   let h=`<div class="rows">
     <button class="row" data-go="shop"><span class="ri">${ic('cart',20)}</span><span class="rt">Einkaufsliste<small>${shop.filter(x=>!x.done).length} offen</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
-    <button class="row" data-go="notes"><span class="ri">${ic('note',20)}</span><span class="rt">Notizen<small>${notes.length} ${notes.length===1?'Notiz':'Notizen'}</small></span><span class="chev">${ic('chevR',18,2)}</span></button></div>`;
+    <button class="row" data-go="notes"><span class="ri">${ic('note',20)}</span><span class="rt">Notizen<small>${notes.length} ${notes.length===1?'Notiz':'Notizen'}</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
+    <button class="row" data-go="review"><span class="ri">${ic('moon',20)}</span><span class="rt">Tagesrückblick<small>${reviews.some(r=>r.date===today())?'Heute gespeichert':'Heute noch offen'}</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
+    <button class="row" data-go="history"><span class="ri">${ic('book',20)}</span><span class="rt">Rückblicke<small>${reviews.length} ${reviews.length===1?'Eintrag':'Einträge'}</small></span><span class="chev">${ic('chevR',18,2)}</span></button></div>`;
   h+=`<div class="sec"><h2>Datensicherung</h2></div><div class="card">
     <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--accent)">${ic('shield',24)}</span><div><b>${backupDue()?'Zeit für eine Sicherung':'Deine Daten sind auf diesem Handy'}</b><div class="meta" style="font-size:13px;margin-top:2px">${lastTxt}. Sichere regelmäßig, damit nichts verloren geht, wenn du das Handy wechselst oder den Browser-Speicher löschst.</div></div></div>
     <button class="btn main" data-bdl="1">${ic('down',18)} Sicherung herunterladen</button>
@@ -616,7 +698,7 @@ function renderMore(){
     <button class="btn" data-bfile="1">${ic('up',18)} Sicherung einspielen</button>`;
   if(pendingImport){
     const d=pendingImport.d;
-    h+=`<div class="note-msg"><b style="color:var(--text)">Aktuelle Daten ersetzen?</b><br>Die Sicherung enthält ${d.tasks.length} Aufgaben, ${d.habits.length} Gewohnheiten, ${d.shop.length} Einkaufsartikel und ${d.notes.length} Notizen${pendingImport.exported?' (vom '+new Date(pendingImport.exported).toLocaleDateString('de-DE')+')':''}. Du kannst danach „Rückgängig“ tippen.</div>
+    h+=`<div class="note-msg"><b style="color:var(--text)">Aktuelle Daten ersetzen?</b><br>Die Sicherung enthält ${d.tasks.length} Aufgaben, ${d.habits.length} Gewohnheiten, ${d.shop.length} Einkaufsartikel und ${d.notes.length} Notizen und ${d.reviews.length} Rückblicke${pendingImport.exported?' (vom '+new Date(pendingImport.exported).toLocaleDateString('de-DE')+')':''}. Du kannst danach „Rückgängig“ tippen.</div>
       <button class="btn danger" data-bapply="1">Ja, ersetzen</button><button class="btn" data-bcancel="1">Abbrechen</button>`;
   }
   if(backupMsg)h+=`<div class="note-msg" role="status">${esc(backupMsg)}</div>`;
@@ -624,7 +706,7 @@ function renderMore(){
   h+=`</div>`;
   const ns=notifState();
   h+=`<div class="sec"><h2>Erinnerungen</h2></div><div class="card"><div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--accent)">${ic('bell',24)}</span><div><b>${ns==='granted'?'Benachrichtigungen sind an':ns==='denied'?'Benachrichtigungen sind blockiert':ns==='default'?'Benachrichtigungen sind aus':'Nicht verfügbar'}</b><div class="meta" style="font-size:13px;margin-top:2px">${ns==='denied'?'Erlaube sie in den Einstellungen deines Browsers oder Handys.':'Erinnerungen kommen, solange die App geöffnet oder im Hintergrund aktiv ist. Verpasste siehst du beim nächsten Öffnen.'}</div></div></div>${ns==='default'&&!permBlocked?`<button class="btn" data-perm="1">Benachrichtigungen aktivieren</button>`:''}</div>`;
-  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Version 2</p>`;
+  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Version 3</p>`;
   $('view').innerHTML=h;
 }
 
@@ -723,7 +805,7 @@ $('hform').addEventListener('submit',e=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('sheet').hidden)closeSheet()});
 
 /* ---------- Klicks ---------- */
-function go(v){if(view==='notes')leaveNote();view=v;openNote=null;window.scrollTo(0,0);render()}
+function go(v){if(view==='notes')leaveNote();if(v==='review')initReview();view=v;openNote=null;window.scrollTo(0,0);render()}
 document.addEventListener('click',e=>{
   if(e.target.classList&&e.target.classList.contains('bd')){closeSheet();return}
   const b=e.target.closest('button');if(!b)return;
@@ -734,9 +816,16 @@ document.addEventListener('click',e=>{
   if(D.hdel){const id=sheet.id;closeSheet();destructive('Gewohnheit gelöscht',()=>{habits=habits.filter(t=>t.id!=id);saveH()});return}
   if(D.nav){go(D.nav);return}
   if(D.go){go(D.go);return}
-  if(D.back){if(view==='notes'&&openNote!==null){leaveNote();render()}else go('more');return}
+  if(D.back){if(view==='notes'&&openNote!==null){leaveNote();render()}else go(view==='review'?'home':'more');return}
   if(D.done){toggleTask(D.done)}
   else if(D.edit){openSheet('task',D.edit);return}
+  else if(D.mood){draft.mood=+D.mood;$('moodrow').innerHTML=moodRow();return}
+  else if(D.rvdone){toggleTask(D.rvdone)}
+  else if(D.rvmove){const x=tasks.find(t=>t.id==D.rvmove);if(x){x.date=addDays(today(),1);x.reminded=false;delete x.snoozeUntil;saveT()}}
+  else if(D.rvdrop){destructive('Aufgabe gestrichen',()=>{tasks=tasks.filter(t=>t.id!=D.rvdrop);saveT()});return}
+  else if(D.rvall){destructive('Alles auf morgen verschoben',()=>{const tm=addDays(today(),1);dayStats().due.forEach(x=>{x.date=tm;x.reminded=false;delete x.snoozeUntil});saveT()});return}
+  else if(D.rvsave){saveReview();return}
+  else if(D.rvdel){destructive('Rückblick gelöscht',()=>{reviews=reviews.filter(r=>r.date!==D.rvdel);saveR()});return}
   else if(D.seg){taskSeg=D.seg}
   else if(b.matches('[data-cat]')){catFilter=D.cat}
   else if(D.cleardone){destructive('Erledigte entfernt',()=>{tasks=tasks.filter(t=>!t.done);saveT()});return}
@@ -775,6 +864,8 @@ document.addEventListener('submit',e=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='ntext'){const n=notes.find(x=>x.id===openNote);if(n){n.text=e.target.value;n.upd=Date.now();saveN()}}
+  else if(e.target.id==='rv-good'){draft.good=e.target.value}
+  else if(e.target.id==='rv-focus'){draft.focus=e.target.value}
   else if(e.target.id==='qtext'){quickText=e.target.value;updateQuick()}
   else if(e.target.id==='nsearch'){noteQ=e.target.value;renderNoteList()}
 });
