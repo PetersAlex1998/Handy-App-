@@ -121,6 +121,16 @@ h1{margin:0;font-family:var(--serif);font-size:36px;font-weight:600;line-height:
 #ntext{display:block;width:100%;min-height:58vh;resize:none;line-height:1.55;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:10px;box-shadow:var(--shadow)}
 #btext{width:100%;min-height:120px;margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12px}
 
+/* Schnelleingabe */
+.qadd{display:flex;gap:8px;margin:12px 0}
+.qadd input{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 15px;box-shadow:var(--shadow)}
+.qadd input:focus{border-color:var(--accent);outline:none}
+.qadd button{border:0;background:var(--accent);color:var(--on-accent);border-radius:16px;width:50px;display:grid;place-items:center;flex:none}
+.qprev{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 14px}
+.qprev:empty{display:none}
+.qp{background:var(--soft);border-radius:99px;padding:4px 11px;font-size:12.5px;display:inline-flex;gap:5px;align-items:center}
+.qp.t{background:none;border:1px solid var(--line);color:var(--muted)}
+
 /* Hinweis (Erinnerung) */
 #banner{margin-top:6px}
 .al{display:flex;gap:8px;align-items:center;background:var(--soft);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:10px 12px;margin:8px 0}
@@ -392,6 +402,115 @@ function render(){
   renderBar();renderBanner();
 }
 
+/* ---------- Schnelleingabe: Satz -> Aufgabe ---------- */
+const WD=['sonntag','montag','dienstag','mittwoch','donnerstag','freitag','samstag'];
+const MONTHS={januar:1,jan:1,februar:2,feb:2,märz:3,mär:3,mrz:3,april:4,apr:4,mai:5,juni:6,jun:6,juli:7,jul:7,august:8,aug:8,september:9,sept:9,sep:9,oktober:10,okt:10,november:11,nov:11,dezember:12,dez:12};
+const NUMW={ein:1,einem:1,einer:1,eine:1,einen:1,zwei:2,drei:3,vier:4,fünf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10};
+const CATKW=[['Gesundheit',['arzt','apotheke','tablette','medikament','sport','training','yoga','laufen','physio','impf']],['Arbeit',['arbeit','büro','meeting','chef','kunde','bericht','projekt','präsentation']],['Haushalt',['putzen','wäsche','waschen','müll','aufräumen','spülmaschine','staubsaug']],['Einkauf',['einkauf','kaufen','besorgen','supermarkt']]];
+function parseQuick(text,nowD){
+  const now=nowD||new Date(),t0=iso(now);
+  let s=' '+String(text)+' ';
+  const o={title:'',date:'',time:'',rem:'',prio:3,cat:'',rep:'',guessed:false};
+  const take=(src,ok)=>{
+    const re=new RegExp('(^|[^\\p{L}\\d])(?:'+src+')(?![\\p{L}\\d])','iu');
+    const m=s.match(re);if(!m)return null;
+    if(ok&&!ok(m))return null;
+    s=s.slice(0,m.index)+m[1]+' '+s.slice(m.index+m[0].length);return m;
+  };
+  const WDS='montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag';
+  const nextWd=(idx,strict)=>{for(let i=strict?1:0;i<=7;i++){const d=addDays(t0,i);if(new Date(d+'T00:00').getDay()===idx)return d}return t0};
+  const num=w=>/^\d+$/.test(w)?+w:(NUMW[w.toLowerCase()]||0);
+  let m;
+  // Wiederholung
+  if(m=take('jeden\\s+('+WDS+')')){o.rep='weekly';o.date=nextWd(WD.indexOf(m[2].toLowerCase()),true)}
+  else if(take('jeden\\s+tag|täglich'))o.rep='daily';
+  else if(take('jede\\s+woche|wöchentlich'))o.rep='weekly';
+  else if(take('jeden\\s+monat|monatlich'))o.rep='monthly';
+  // Erinnerung, Wichtigkeit
+  if(take('mit\\s+erinnerung|erinnere\\s+mich(?:\\s+daran)?|erinnerung|erinnern|erinner\\w*'))o.rem='0';
+  if(take('dringend'))o.prio=1;else if(take('wichtig'))o.prio=2;
+  // Uhrzeit
+  const setT=(h,mi)=>{o.time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0')};
+  const okT=(h,mi)=>h>=0&&h<24&&mi>=0&&mi<60;
+  if(m=take('(?:um\\s+)?(\\d{1,2})[:.](\\d{2})\\s*uhr',x=>okT(+x[2],+x[3])))setT(+m[2],+m[3]);
+  else if(m=take('(?:um\\s+)?(\\d{1,2}):(\\d{2})',x=>okT(+x[2],+x[3])))setT(+m[2],+m[3]);
+  else if(m=take('(?:um\\s+)?(\\d{1,2})\\s*uhr',x=>okT(+x[2],0)))setT(+m[2],0);
+  else if(m=take('um\\s+(\\d{1,2})',x=>okT(+x[2],0)))setT(+m[2],0);
+  // Datum
+  const mk=(d,mo,y)=>{
+    let yr=y?(y<100?2000+y:y):now.getFullYear();
+    let dt=new Date(yr,mo-1,d);if(dt.getMonth()!==mo-1||dt.getDate()!==d)return '';
+    let r=iso(dt);if(!y&&r<t0){dt=new Date(yr+1,mo-1,d);if(dt.getMonth()!==mo-1)return '';r=iso(dt)}
+    return r;
+  };
+  let dm=null;
+  if(!o.date){
+    if(m=take('(\\d{1,2})\\.(\\d{1,2})(?:\\.(\\d{4}|\\d{2})?)?',x=>!!mk(+x[2],+x[3],x[4]?+x[4]:0)))o.date=mk(+m[2],+m[3],m[4]?+m[4]:0);
+    else if(m=take('(\\d{1,2})\\.?\\s*('+Object.keys(MONTHS).join('|')+')',x=>!!mk(+x[2],MONTHS[x[3].toLowerCase()],0)))o.date=mk(+m[2],MONTHS[m[3].toLowerCase()],0);
+    else if(take('übermorgen'))o.date=addDays(t0,2);
+    else if(take('morgen'))o.date=addDays(t0,1);
+    else if(take('heute|heut'))o.date=t0;
+    else if(m=take('in\\s+(\\d+|'+Object.keys(NUMW).join('|')+')\\s+(tag|tage|tagen|woche|wochen|monat|monate|monaten)',x=>num(x[2])>0)){
+      const n=num(m[2]),u=m[3].toLowerCase();
+      if(u.startsWith('tag'))o.date=addDays(t0,n);
+      else if(u.startsWith('woche'))o.date=addDays(t0,7*n);
+      else{const d=new Date(t0+'T00:00');d.setMonth(d.getMonth()+n);o.date=iso(d)}
+    }
+    else if(take('(?:nächste[nrms]?|kommende[nrms]?)\\s+woche'))o.date=nextWd(1,true);
+    else if(m=take('(?:am\\s+|nächste[nrms]?\\s+|kommende[nrms]?\\s+)?('+WDS+')'))o.date=nextWd(WD.indexOf(m[2].toLowerCase()),true);
+    else if(take('(?:am\\s+|dieses\\s+)?wochenende')){const d=new Date(t0+'T00:00').getDay();o.date=d===0?t0:nextWd(6,false)}
+  }
+  // Tageszeit
+  if(m=take('morgens|vormittags|mittags|nachmittags|abends')){
+    const w=m[0].replace(/[^\p{L}]/gu,'').toLowerCase();
+    if(o.time){if((w==='nachmittags'||w==='abends')&&+o.time.slice(0,2)<12)setT(+o.time.slice(0,2)+12,+o.time.slice(3))}
+    else setT({morgens:8,vormittags:10,mittags:12,nachmittags:15,abends:19}[w],0);
+  }
+  // Bereich per #Tag
+  if(m=take('#(\\p{L}+)')){const c=['Privat','Arbeit','Haushalt','Gesundheit','Einkauf'].find(x=>x.toLowerCase().startsWith(m[2].toLowerCase()));if(c)o.cat=c}
+  // Titel bereinigen
+  let t=s.replace(/\s+/g,' ').trim();
+  const lead=/^(am|um|bis|für|ab|den|dem|in|jeden|und|noch|mal|:|,|;|-)\s+/i,trail=/\s+(am|um|bis|für|ab|den|dem|in|und|:|,|;|-)$/i;
+  for(let i=0;i<6;i++){t=t.replace(lead,'').replace(trail,'').replace(/^[:,;\-\s]+|[:,;\-\s]+$/g,'')}
+  if(!t)t=String(text).trim();
+  o.title=t.charAt(0).toUpperCase()+t.slice(1);
+  if(!o.cat){const low=o.title.toLowerCase();for(const[c,ks]of CATKW){if(ks.some(k=>low.includes(k))){o.cat=c;break}}}
+  if(!o.cat)o.cat='Privat';
+  if(o.rem!==''&&!o.time)o.time='09:00';
+  if(o.time&&!o.date){
+    const hhmm=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    o.date=o.time>hhmm?t0:addDays(t0,1);o.guessed=true;
+  }
+  if(o.rem!==''&&!o.date)o.date=t0;
+  return o;
+}
+let quickText='';
+function quickBar(){
+  return `<form class="qadd" id="qform" autocomplete="off"><input id="qtext" type="text" placeholder="Schnell hinzufügen: morgen 14 Uhr Zahnarzt" aria-label="Schnell hinzufügen" enterkeyhint="done"><button aria-label="Hinzufügen">${ic('plus',22,2.2)}</button></form><div class="qprev" id="qprev" aria-live="polite"></div>`;
+}
+function quickChips(p){
+  const c=[];
+  if(p.date){let l=fmt(p.date);if(p.date.slice(0,4)!==String(new Date().getFullYear()))l+=' '+p.date.slice(0,4);c.push(ic('cal',13,2)+' '+l)}
+  if(p.time)c.push(ic('bell',13,2)+' '+p.time+(p.rem!==''?'':'')+(p.rem!==''?' · Erinnerung':''));
+  if(p.rep)c.push(ic('repeat',13,2)+' '+REPN[p.rep]);
+  if(p.prio<3)c.push(p.prio===1?'Dringend':'Wichtig');
+  c.push(esc(p.cat));
+  return c.map(x=>`<span class="qp">${x}</span>`).join('')+(p.guessed?`<span class="qp t">Zeit schon vorbei, daher morgen</span>`:'');
+}
+function updateQuick(){
+  const el=$('qprev');if(!el)return;
+  el.innerHTML=quickText.trim()?quickChips(parseQuick(quickText)):'';
+}
+function bindQuick(){const i=$('qtext');if(i){i.value=quickText;updateQuick()}}
+function addQuick(){
+  const txt=quickText.trim();if(!txt)return;
+  const p=parseQuick(txt);
+  snap.last=snap();
+  tasks.push({id:Date.now(),title:p.title,date:p.date,time:p.time,rem:p.rem,reminded:false,prio:p.prio,cat:p.cat,rep:p.rep,done:false});
+  saveT();quickText='';checkReminders();render();
+  toast('Hinzugefügt: '+p.title+(p.date?' · '+fmt(p.date):'')+(p.time?' '+p.time:''));
+}
+
 /* ---------- Heute ---------- */
 function greet(){const h=new Date().getHours();return h<11?'Guten Morgen':h<18?'Guten Tag':'Guten Abend'}
 function itemRow(x,showDate=true){
@@ -410,7 +529,7 @@ function renderHome(){
   const doneH=habits.filter(h=>h.days.includes(t)).length;
   const total=due.length+doneT+habits.length,done=doneT+doneH;
   setTop(greet(),new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'}));
-  let h='';
+  let h=quickBar();
   if(total===0)h+=`<div class="card hero"><b>Noch nichts geplant</b><small>Tippe auf das Plus und plane deinen Tag.</small></div>`;
   else h+=`<div class="card hero"><b>${done===total?'Alles erledigt':done+' von '+total+' erledigt'}</b><small>${done===total?'Genieße den Rest des Tages.':due.length+' '+(due.length===1?'Aufgabe':'Aufgaben')+' und '+(habits.length-doneH)+' '+(habits.length-doneH===1?'Gewohnheit':'Gewohnheiten')+' offen'}</small><div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><i style="width:${Math.round(done/total*100)}%"></i></div></div>`;
   h+=`<div class="sec"><h2>Heute fällig</h2>${due.length?`<span class="meta">${due.length}</span>`:''}</div>`;
@@ -420,7 +539,7 @@ function renderHome(){
       habits.map(x=>{const on=x.days.includes(t),n=streak(x);return `<button class="hchip ${on?'on':''}" data-hchip="${x.id}">${on?ic('check',14,2.6):''}<span>${esc(x.name)}</span>${n>1?`<small>${ic('flame',12,2)}${n}</small>`:''}</button>`}).join('')+`</div>`;
   }
   if(soon.length)h+=`<div class="sec"><h2>Demnächst</h2><button class="link" data-go="tasks">Alle</button></div>`+soon.map(x=>itemRow(x)).join('');
-  $('view').innerHTML=h;
+  $('view').innerHTML=h;bindQuick();
 }
 
 /* ---------- Aufgaben ---------- */
@@ -433,12 +552,12 @@ function renderTasks(){
   else if(taskSeg==='planned')l=l.filter(x=>!x.done&&x.date&&x.date>t).sort(sortT);
   else l=l.filter(x=>x.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   const seg=[['open','Offen'],['planned','Geplant'],['done','Erledigt']];
-  let h=`<div class="seg">${seg.map(([k,n])=>`<button data-seg="${k}" class="${taskSeg===k?'on':''}">${n}</button>`).join('')}</div>`;
+  let h=quickBar()+`<div class="seg">${seg.map(([k,n])=>`<button data-seg="${k}" class="${taskSeg===k?'on':''}">${n}</button>`).join('')}</div>`;
   h+=`<div class="chips"><button class="chip ${catFilter===''?'on':''}" data-cat="">Alle</button>${CATS.map(c=>`<button class="chip ${catFilter===c?'on':''}" data-cat="${c}">${c}</button>`).join('')}</div>`;
   if(l.length)h+=l.map(x=>itemRow(x)).join('');
   else h+=`<div class="empty"><b>${taskSeg==='done'?'Noch nichts erledigt':'Nichts zu tun'}</b>${taskSeg==='done'?'Erledigte Aufgaben erscheinen hier.':'Tippe auf das Plus, um eine Aufgabe anzulegen.'}</div>`;
   if(taskSeg==='done'&&l.length)h+=`<button class="clear" data-cleardone="1">Erledigte entfernen (${l.length})</button>`;
-  $('view').innerHTML=h;
+  $('view').innerHTML=h;bindQuick();
 }
 
 /* ---------- Woche ---------- */
@@ -644,6 +763,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('submit',e=>{
   const f=e.target;
+  if(f.id==='qform'){e.preventDefault();addQuick();const i=$('qtext');if(i)i.focus();return}
   if(f.id==='sform'){
     e.preventDefault();const v=$('sname').value.trim();if(!v)return;
     shop.push({id:Date.now(),name:v,done:false});saveS();render();$('sname').focus();
@@ -655,6 +775,7 @@ document.addEventListener('submit',e=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='ntext'){const n=notes.find(x=>x.id===openNote);if(n){n.text=e.target.value;n.upd=Date.now();saveN()}}
+  else if(e.target.id==='qtext'){quickText=e.target.value;updateQuick()}
   else if(e.target.id==='nsearch'){noteQ=e.target.value;renderNoteList()}
 });
 
