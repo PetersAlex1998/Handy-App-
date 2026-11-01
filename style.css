@@ -1,9 +1,6 @@
 /* Layout: kopfzeile mit grossem Titel, Inhalt als Karten, feste Tab-Leiste unten, runder Plus-Knopf, Bottom-Sheet zum Erfassen */
 :root{--bg:#FEF6E9;--card:#FFFBF4;--text:#232639;--muted:#666A86;--msoft:#474B69;--accent:#232639;--on-accent:#FEF6E9;--soft:#C3CFE9;--line:#E2DACB;--red:#B4524C;--amber:#946310;--green:#3F9468;--greenfill:#2F7F55;--toast-bg:#232639;--toast-fg:#FEF6E9;--toast-act:#C3CFE9;--shadow:0 1px 2px rgba(35,38,57,.05),0 8px 22px rgba(35,38,57,.07);--safe-top:env(safe-area-inset-top,0px);--font:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--head:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
-@media (prefers-color-scheme:dark){
-:root:not([data-theme="light"]){--bg:#171829;--card:#232639;--text:#F6EFE3;--muted:#A4A8C4;--msoft:#BFC4E0;--accent:#C3CFE9;--on-accent:#171829;--soft:#2F3459;--line:#363A57;--red:#E07A74;--amber:#E0A64A;--green:#4FA97B;--toast-bg:#3A3F6B;--toast-fg:#F6EFE3;--toast-act:#C3CFE9;--shadow:none;color-scheme:dark}
-}
-:root[data-theme="dark"]{--bg:#171829;--card:#232639;--text:#F6EFE3;--muted:#A4A8C4;--msoft:#BFC4E0;--accent:#C3CFE9;--on-accent:#171829;--soft:#2F3459;--line:#363A57;--red:#E07A74;--amber:#E0A64A;--green:#4FA97B;--toast-bg:#3A3F6B;--toast-fg:#F6EFE3;--toast-act:#C3CFE9;--shadow:none;color-scheme:dark}
+:root{color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html,body,button,input,select,textarea,a,label{touch-action:manipulation}
