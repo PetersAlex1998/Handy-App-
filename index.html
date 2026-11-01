@@ -283,6 +283,31 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 .rname .meta{margin-top:2px}
 #rt-days{flex-wrap:wrap;overflow:visible}
 
+/* Essen und Einkauf im Mittelpunkt */
+#bar .cnt{position:absolute;top:5px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--accent);color:var(--on-accent);font-size:10px;font-style:normal;font-weight:600;display:grid;place-items:center;border:2px solid var(--card);line-height:1}
+.nudge.next{border-left-color:var(--accent);background:var(--soft);box-shadow:none}
+.nudge.next .ni{background:var(--card)}
+.nudge.next p{color:var(--msoft)}
+.nudge.next .nbtn{background:var(--card)}
+.nudge.next .nbtn.main{background:var(--accent)}
+.wsrow{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;text-align:left;padding:11px 14px;border-top:1px solid var(--line);color:var(--text)}
+.wsrow:first-child{border-top:0}
+.wsd{width:56px;flex:none;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.wst{flex:1;min-width:0;word-break:break-word;font-size:15px}
+.wsrow.empty0 .wst{color:var(--accent);font-size:14px}
+.wsrow .chev{color:var(--muted)}
+.shsum b{display:block;font-weight:600}
+.shsum small{display:block;color:var(--muted);margin-top:2px;font-size:13px}
+.shsum .na{margin-top:12px}
+.store .item{padding:15px 14px 15px 12px;margin:10px 0}
+.store .chk{width:36px;height:36px}
+.store .tx>span:first-child{font-size:17px}
+.tpl{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;text-align:left;padding:11px 2px;border-bottom:1px solid var(--line);color:var(--text)}
+.tpl .tb{width:24px;height:24px;border-radius:8px;border:2px solid var(--muted);display:grid;place-items:center;flex:none;color:var(--on-accent)}
+.tpl.on .tb{background:var(--accent);border-color:var(--accent)}
+.tpl .tn{flex:1;min-width:0}
+.tpl .tn small{display:block;color:var(--muted);font-size:12.5px}
+
 /* Hinweis (Erinnerung) */
 #banner{margin-top:6px}
 .al{display:flex;gap:8px;align-items:center;background:var(--soft);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:10px 12px;margin:8px 0}
@@ -360,6 +385,11 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
       <div id="t-subs"></div>
       <input id="t-subadd" type="text" placeholder="Teilschritt hinzufügen" enterkeyhint="done" autocomplete="off">
       <div class="acts"><button type="button" class="del" id="t-del" data-tdel="1">Löschen</button><button type="submit" class="ok">Speichern</button></div>
+    </form>
+    <form id="tplform" autocomplete="off" hidden>
+      <p class="hint" style="margin:0 0 6px">Wähle Rezepte aus. Du kannst sie danach beliebig ändern.</p>
+      <div id="tpl-list"></div>
+      <div class="acts"><button type="button" id="tpl-all" data-tplall="1">Alle auswählen</button><button type="submit" class="ok" id="tpl-ok">Hinzufügen</button></div>
     </form>
     <form id="ritform" autocomplete="off" hidden>
       <input id="rt-name" type="text" placeholder="z. B. Woche planen" required>
@@ -455,11 +485,13 @@ const K={t:'alltag.tasks.v1',h:'alltag.habits.v1',s:'alltag.shop.v1',n:'alltag.n
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
 const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let tasks=load(K.t,[]),habits=load(K.h,[]),shop=load(K.s,[]),notes=load(K.n,[]),reviews=load(K.r,[]),projects=load(K.p,[]),recipes=load(K.x,[]),meals=load(K.m,[]);
-const SET_DEF={m:'05:00',n:'11:00',e:'17:00',max:4};
+const SET_DEF={m:'05:00',n:'11:00',e:'17:00',max:4,planDay:6,shopDay:0,showHabits:true};
 let settings=Object.assign({},SET_DEF,load(K.c,{}));
-let rituals=load(K.ri,null);if(!Array.isArray(rituals)){rituals=defaultRituals();put(K.ri,rituals)}
+let rituals=load(K.ri,null),freshR=false;if(!Array.isArray(rituals)){rituals=defaultRituals();put(K.ri,rituals);freshR=true}
 let nstate=Object.assign({date:'',hide:{},snooze:{}},load(K.nu,{}));
 const saveC=()=>put(K.c,settings),saveRi=()=>put(K.ri,rituals),saveNu=()=>put(K.nu,nstate);
+// Einmalige Umstellung: die beiden alten Standard-Rituale ersetzt jetzt der "Nächste Schritt"-Hinweis
+if(!settings.mig){if(!freshR)rituals=rituals.filter(r=>!((r.id===1&&r.name==='Einkaufsliste prüfen'&&r.target==='shop')||(r.id===2&&r.name==='Nächste Woche planen'&&r.target==='meals_next')));settings.mig=1;saveC();saveRi()}
 const saveT=()=>put(K.t,tasks),saveH=()=>put(K.h,habits),saveS=()=>put(K.s,shop),saveN=()=>put(K.n,notes);
 const saveR=()=>put(K.r,reviews);
 const saveP=()=>put(K.p,projects),saveX=()=>put(K.x,recipes),saveM=()=>put(K.m,meals);
@@ -603,27 +635,33 @@ function applyImport(){
 
 /* ---------- Navigation ---------- */
 let view='home',taskSeg='open',catFilter='',weekOffset=0,addDay=null,openNote=null,noteQ='';
-const TABS=[['home','Heute','sun'],['tasks','Aufgaben','list'],['week','Woche','cal'],['habits','Gewohnheiten','repeat'],['more','Mehr','more']];
-const group=v=>(v==='shop'||v==='notes'||v==='history'||v==='meals'||v==='settings')?'more':v==='review'?'home':v==='hstats'?'habits':v==='proj'?'tasks':v==='recipe'?'more':v;
+const TABS=[['home','Start','sun'],['meals','Essen','plate'],['shop','Einkauf','cart'],['tasks','Aufgaben','list'],['more','Mehr','more']];
+const GROUPS={home:'home',review:'home',meals:'meals',recipe:'meals',shop:'shop',tasks:'tasks',week:'tasks',proj:'tasks'};
+const group=v=>GROUPS[v]||'more';
+let wl=null;
+async function wakeLock(on){try{if(on&&'wakeLock' in navigator&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}else if(!on&&wl){await wl.release();wl=null}}catch(e){wl=null}}
 function setTop(title,sub,o={}){
   $('crumb').innerHTML=o.back?`<button class="back" data-back="1">${ic('chevL',18,2)}${o.back===true?'Mehr':o.back}</button>`:'';
   $('h1').textContent=title;$('sub').textContent=sub||'';$('sub').hidden=!sub;
   $('topact').innerHTML=o.act||'';
 }
+const mustCount=()=>shop.filter(x=>!x.done&&x.p!==true).length;
 function renderBar(){
-  $('bar').innerHTML=TABS.map(([k,n,i])=>`<button data-nav="${k}" class="${group(view)===k?'on':''}" ${group(view)===k?'aria-current="page"':''}>${ic(i,24,group(view)===k?2.1:1.8)}<span>${n}</span>${k==='more'&&backupDue()?'<i class="dot" title="Sicherung fällig"></i>':''}</button>`).join('');
+  const mc=mustCount();
+  $('bar').innerHTML=TABS.map(([k,n,i])=>`<button data-nav="${k}" class="${group(view)===k?'on':''}" ${group(view)===k?'aria-current="page"':''}>${ic(i,24,group(view)===k?2.1:1.8)}<span>${n}</span>${k==='more'&&backupDue()?'<i class="dot" title="Sicherung fällig"></i>':''}${k==='shop'&&mc?`<i class="cnt" aria-label="${mc} zu kaufen">${Math.min(99,mc)}</i>`:''}</button>`).join('');
 }
 function fabInfo(){
   if(view==='habits')return['habit','Neue Gewohnheit'];
   if(view==='notes'&&openNote===null)return['note','Neue Notiz'];
   if(view==='tasks'&&taskSeg==='projects')return['project','Neues Projekt'];
-  if(view==='shop'&&shopSeg==='recipes')return['recipe','Neues Rezept'];
-  if(view==='meals')return['meal','Gericht planen'];
-  if(view==='home'||view==='tasks'||view==='week'||view==='proj')return['task','Neue Aufgabe'];
+  if(view==='meals')return mealSeg==='recipes'?['recipe','Neues Rezept']:['meal','Gericht planen'];
+  if(view==='tasks'||view==='week'||view==='proj')return['task','Neue Aufgabe'];
   return null;
 }
 function render(){
   quickProj=view==='proj'?projId:'';
+  $('view').className='wrap'+(view==='shop'&&shopMode==='store'?' store':'');
+  wakeLock(view==='shop'&&shopMode==='store');
   const f=fabInfo();$('fab').hidden=!f;if(f){$('fab').innerHTML=ic('plus',28,2.2);$('fab').setAttribute('aria-label',f[1])}
   ({home:renderHome,tasks:renderTasks,week:renderWeek,habits:renderHabits,more:renderMore,shop:renderShop,notes:renderNotes,review:renderReview,history:renderHistory,hstats:renderHstats,proj:renderProj,recipe:renderRecipe,meals:renderMeals,settings:renderSettings})[view]();
   renderBar();renderBanner();
@@ -766,17 +804,15 @@ let nudgeActs={};
 const tmin=t=>{const a=String(t).split(':');return (+a[0])*60+(+a[1]||0)};
 function partNow(d){d=d||new Date();const m=d.getHours()*60+d.getMinutes();return m>=tmin(settings.m)&&m<tmin(settings.n)?'morning':m>=tmin(settings.n)&&m<tmin(settings.e)?'noon':'evening'}
 function defaultRituals(){return[
-  {id:1,name:'Einkaufsliste prüfen',days:[0],part:'morning',target:'shop',cond:'shop',text:'',on:true},
-  {id:2,name:'Nächste Woche planen',days:[6],part:'noon',target:'meals_next',cond:'plan_next',text:'Für die nächste Woche steht noch kein Essen im Plan.',on:true},
   {id:3,name:'Kommende Woche ansehen',days:[6],part:'evening',target:'week_next',cond:'always',text:'Schau dir an, was nächste Woche ansteht.',on:true}]}
 function nsync(){const t=today();if(nstate.date!==t){nstate.date=t;nstate.hide={};saveNu()}}
 function nHidden(id){nsync();return !!nstate.hide[id]||(nstate.snooze[id]||0)>Date.now()}
 function nHide(id){nsync();nstate.hide[id]=true;saveNu()}
 function nLater(id,ms){nstate.snooze[id]=Date.now()+(ms||2*36e5);saveNu()}
 function navTo(tg){
-  if(tg==='shop'){shopSeg='list';go('shop')}
-  else if(tg==='meals'){mealOff=0;go('meals')}
-  else if(tg==='meals_next'){mealOff=1;go('meals')}
+  if(tg==='shop'){shopMode='plan';go('shop')}
+  else if(tg==='meals'){mealSeg='plan';mealOff=0;go('meals')}
+  else if(tg==='meals_next'){mealSeg='plan';mealOff=1;go('meals')}
   else if(tg==='week'){weekOffset=0;go('week')}
   else if(tg==='week_next'){weekOffset=1;go('week')}
   else if(tg==='tasks'){taskSeg='open';go('tasks')}
@@ -802,7 +838,7 @@ function nudgeCards(){
   const askOf=h=>h.ask||'evening';
   // Gewohnheiten: eigene Tageszeit und danach jeweils weiter, bis sie erledigt sind
   const hl=habits.filter(h=>!h.days.includes(t)&&askOf(h)!=='none'&&PRANK[askOf(h)]<=PRANK[p]&&(p!=='morning'||askOf(h)==='morning'));
-  if(hl.length)L.push({id:'hab-'+p,prio:p==='evening'?85:90,icon:'repeat',habits:hl,
+  if(settings.showHabits!==false&&hl.length)L.push({id:'hab-'+p,prio:p==='evening'?25:30,icon:'repeat',habits:hl,
     title:p==='morning'?'Deine Morgen-Gewohnheiten':p==='noon'?'Gewohnheiten für den Tag':'Hast du alles geschafft?',
     text:p==='evening'?'Hake ab, was du heute gemacht hast.':'Hake ab, was du schon gemacht hast.'});
   // Überfällige Aufgaben
@@ -831,44 +867,77 @@ function nudgeHTML(c){
   nudgeActs[c.id]=c.acts||[];
   const chips=c.habits?`<div class="hchips">${c.habits.map(x=>`<button class="hchip" data-hchip="${x.id}">${esc(x.name)}</button>`).join('')}</div>`:'';
   const acts=(c.acts||[]).map((a,k)=>`<button class="nbtn main" data-nact="${esc(c.id)}|${k}">${esc(a.l)}</button>`).join('');
-  return `<div class="nudge" data-nid="${esc(c.id)}"><div class="nh"><span class="ni">${ic(c.icon||'bell',18,2)}</span><b>${esc(c.title)}</b><button class="nx" data-nx="${esc(c.id)}" aria-label="Heute ausblenden">${ic('x',16,2)}</button></div>${c.text?`<p>${esc(c.text)}</p>`:''}${chips}<div class="na">${acts}<button class="nbtn" data-nlater="${esc(c.id)}" data-nms="${c.later||''}">Später</button></div></div>`;
+  return `<div class="nudge ${c.cls||''}" data-nid="${esc(c.id)}"><div class="nh"><span class="ni">${ic(c.icon||'bell',18,2)}</span><b>${esc(c.title)}</b><button class="nx" data-nx="${esc(c.id)}" aria-label="Heute ausblenden">${ic('x',16,2)}</button></div>${c.text?`<p>${esc(c.text)}</p>`:''}${chips}<div class="na">${acts}<button class="nbtn" data-nlater="${esc(c.id)}" data-nms="${c.later||''}">Später</button></div></div>`;
 }
-function talkText(due,total,done){
-  const n=due.length;
-  if(partNow()==='evening')return total?`Du hast heute ${done} von ${total} Dingen erledigt.`+(n?` ${n} ${n===1?'Aufgabe ist':'Aufgaben sind'} noch offen.`:' Schön, alles ist geschafft.'):'Heute war nichts geplant.';
-  if(!n)return 'Heute stehen keine Aufgaben an.';
-  const t=today(),first=due.filter(x=>x.time&&x.date===t).sort((a,b)=>a.time.localeCompare(b.time))[0];
-  return `Heute ${n===1?'steht 1 Aufgabe':'stehen '+n+' Aufgaben'} an`+(first?`, der erste Termin ist um ${first.time} Uhr.`:'.');
+function planWeekOff(){return dowIdx(today())>=settings.planDay?1:0}
+function foodStep(){
+  const t=today(),off=planWeekOff(),mon=monOf(off),end=addDays(mon,6);
+  const from=mon>t?mon:t,upcoming=meals.filter(m=>m.date>=from&&m.date<=end);
+  const open=shop.filter(x=>!x.done),must=open.filter(x=>x.p!==true),pan=open.filter(x=>x.p===true);
+  const pend=meals.filter(m=>m.date>=mon&&m.date<=end&&m.date>=t&&m.rid&&!m.listed&&recOf(m.rid));
+  const wk=off?'die nächste Woche':'diese Woche';
+  if(!upcoming.length)return{id:'step-plan',cls:'next',prio:100,icon:'plate',title:off?'Plane die nächste Woche':'Plane deine Woche',text:'Lege fest, was es zu essen gibt. Die Einkaufsliste entsteht daraus.',
+    acts:[{l:'Woche planen',run:()=>{mealSeg='plan';mealOff=off;go('meals')}}].concat(recipes.length?[{l:'Vorschlag machen',run:()=>{mealSeg='plan';mealOff=off;suggestWeek()}}]:[{l:'Rezepte wählen',run:()=>{mealSeg='recipes';go('meals');openSheet('tpl')}}])};
+  if(pend.length)return{id:'step-tolist',cls:'next',prio:100,icon:'cart',title:pend.length+' '+(pend.length===1?'Gericht':'Gerichte')+' noch nicht auf der Einkaufsliste',text:'Übernimm die Zutaten für '+wk+'. Gleiche Zutaten werden zusammengerechnet.',
+    acts:[{l:'Zutaten übernehmen',run:()=>{mealOff=off;mealsToShop()}}]};
+  if(pan.length)return{id:'step-pantry',cls:'next',prio:100,icon:'home',title:'Vorrat prüfen',text:pan.length+' '+(pan.length===1?'Zutat hast':'Zutaten hast')+' du wahrscheinlich zu Hause. Schau kurz nach, bevor du einkaufst.',
+    acts:[{l:'Vorrat prüfen',run:()=>{shopMode='plan';go('shop')}}]};
+  if(must.length)return{id:'step-shop',cls:'next',prio:100,icon:'cart',title:'Einkaufen: '+must.length+' '+(must.length===1?'Artikel':'Artikel'),text:dowIdx(t)===settings.shopDay?'Heute ist dein Einkaufstag.':'Alles ist geplant, die Liste ist fertig.',
+    acts:[{l:'Im Laden',run:()=>{shopMode='store';go('shop')}},{l:'Liste ansehen',run:()=>{shopMode='plan';go('shop')}}]};
+  return null;
 }
+function weekStrip(){
+  const t=today(),days=[...Array(7)].map((_,i)=>addDays(t,i));
+  const rows=days.map((d,i)=>{
+    const l=meals.filter(m=>m.date===d).sort((a,b)=>'FMA'.indexOf(a.slot)-'FMA'.indexOf(b.slot));
+    const lab=i===0?'Heute':i===1?'Morgen':new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'short'});
+    return `<button class="wsrow ${l.length?'':'empty0'}" ${l.length?`data-mgo="${d}"`:`data-madd="${d}|A"`}><span class="wsd">${lab}</span><span class="wst">${l.length?l.map(m=>esc(m.title)).join(' · '):'+ planen'}</span><span class="chev">${ic('chevR',16,2)}</span></button>`;
+  }).join('');
+  return `<div class="sec"><h2>Essen in den nächsten Tagen</h2><button class="link" data-go="meals">Wochenplan</button></div><div class="rows">${rows}</div>`;
+}
+function shopSummary(){
+  const open=shop.filter(x=>!x.done),must=open.filter(x=>x.p!==true),pan=open.filter(x=>x.p===true);
+  if(!open.length)return '';
+  return `<div class="card shsum"><b>Einkaufsliste: ${must.length} zu kaufen</b><small>${pan.length?pan.length+' wahrscheinlich vorrätig':'alles Wichtige steht drauf'}</small><div class="na"><button class="nbtn main" data-shgo="plan">Liste öffnen</button><button class="nbtn" data-shgo="store">Im Laden</button></div></div>`;
+}
+function talkText(due){
+  const t=today(),p=partNow(),n=due.length,out=[];
+  const must=shop.filter(x=>!x.done&&x.p!==true).length;
+  const titles=l=>l.slice(0,2).map(m=>m.title).join(' und ');
+  if(recipes.length||meals.length){
+    if(p==='evening'){const tm=meals.filter(m=>m.date===addDays(t,1)&&m.slot!=='F');if(tm.length)out.push('Morgen gibt es '+titles(tm)+'.');else out.push('Für morgen ist noch nichts zu essen geplant.')}
+    else{const tm=meals.filter(m=>m.date===t&&m.slot!=='F');if(tm.length)out.push('Heute gibt es '+titles(tm)+'.');else out.push('Für heute ist noch nichts zu essen geplant.')}
+  }
+  if(must)out.push('Auf der Einkaufsliste '+(must===1?'steht 1 Artikel':'stehen '+must+' Artikel')+'.');
+  if(n)out.push((p==='evening'?'Noch offen: ':'Dazu ')+(n===1?'1 Aufgabe':n+' Aufgaben')+'.');
+  return out.length?out.join(' '):'Schreib unten einen Artikel auf die Einkaufsliste oder plane deine Woche.';
+}
+function homeShopForm(){return `<form class="sform" id="sform" autocomplete="off"><input id="sname" type="text" placeholder="Zur Einkaufsliste, z. B. 2 Tomaten" aria-label="Zur Einkaufsliste hinzufügen"><button aria-label="Hinzufügen">${ic('plus',22,2.2)}</button></form><div class="sug" id="ssug"></div>`}
 function renderHome(){
   const t=today();
   const due=tasks.filter(x=>!x.done&&(!x.date||x.date<=t)).sort(sortT);
   const soon=tasks.filter(x=>!x.done&&x.date&&x.date>t).sort(sortT).slice(0,4);
-  const doneT=tasks.filter(x=>x.done&&x.doneAt&&iso(new Date(x.doneAt))===t).length;
-  const doneH=habits.filter(h=>h.days.includes(t)).length;
-  const total=due.length+doneT+habits.length,done=doneT+doneH;
   setTop(greet(),new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'}));
   nudgeActs={};
+  const step=foodStep(),showStep=step&&!nHidden(step.id);
   const cards=nudgeCards(),maxN=Math.max(1,Math.min(10,+settings.max||4)),shown=cards.slice(0,maxN),rest=cards.slice(maxN);
-  let h=`<p class="talk">${esc(talkText(due,total,done))}</p>`+quickBar();
+  let h=`<p class="talk">${esc(talkText(due))}</p>`+homeShopForm();
+  if(showStep)h+=nudgeHTML(step);
+  h+=weekStrip()+shopSummary();
   h+=shown.map(nudgeHTML).join('');
   if(rest.length)h+=`<details class="tbl"><summary>Weitere Hinweise (${rest.length})</summary>${rest.map(nudgeHTML).join('')}</details>`;
-  const yRv=reviews.find(r=>r.date===addDays(t,-1)&&r.focus&&r.focus.trim());
-  if(yRv)h+=`<div class="card focus"><small>Dein Fokus für heute</small><b>${esc(yRv.focus)}</b></div>`;
-  if(total===0)h+=`<div class="card hero"><b>Noch nichts geplant</b><small>Tippe auf das Plus und plane deinen Tag.</small></div>`;
-  else h+=`<div class="card hero"><b>${done===total?'Alles erledigt':done+' von '+total+' erledigt'}</b><small>${done===total?'Genieße den Rest des Tages.':due.length+' '+(due.length===1?'Aufgabe':'Aufgaben')+' und '+(habits.length-doneH)+' '+(habits.length-doneH===1?'Gewohnheit':'Gewohnheiten')+' offen'}</small><div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><i style="width:${Math.round(done/total*100)}%"></i></div></div>`;
-  h+=`<div class="sec"><h2>Heute fällig</h2>${due.length?`<span class="meta">${due.length}</span>`:''}</div>`;
+  h+=`<div class="sec"><h2>Aufgaben</h2><button class="link" data-addtask="1">+ Aufgabe</button></div>`;
   h+=due.length?due.map(x=>itemRow(x)).join(''):`<div class="empty"><b>Nichts fällig</b>Du hast für heute alles im Griff.</div>`;
   const aps=projects.filter(p=>!p.closed).sort(projSort).slice(0,3);
   if(aps.length)h+=`<div class="sec"><h2>Projekte</h2><button class="link" data-goproj="1">Alle</button></div>`+aps.map(projCard).join('');
-  const tm=meals.filter(m=>m.date===t);
-  if(tm.length)h+=`<div class="sec"><h2>Essen heute</h2><button class="link" data-go="meals">Plan</button></div><div class="card">`+['F','M','A'].map(sl=>{const l=tm.filter(m=>m.slot===sl);return l.length?`<div class="rrow"><span class="rn">${esc(l.map(m=>m.title).join(', '))}</span><span class="ra">${SLOTL[sl]}</span></div>`:''}).join('')+`</div>`;
-  if(habits.length&&!shown.some(c=>c.habits)){
+  if(soon.length)h+=`<div class="sec"><h2>Demnächst</h2><button class="link" data-go="tasks">Alle</button></div>`+soon.map(x=>itemRow(x)).join('');
+  const yRv=reviews.find(r=>r.date===addDays(t,-1)&&r.focus&&r.focus.trim());
+  if(yRv)h+=`<div class="card focus" style="margin-top:16px"><small>Dein Fokus für heute</small><b>${esc(yRv.focus)}</b></div>`;
+  if(habits.length&&settings.showHabits!==false&&!shown.some(c=>c.habits)){
     h+=`<div class="sec"><h2>Gewohnheiten</h2><button class="link" data-go="habits">Alle</button></div><div class="hchips">`+
       habits.map(x=>{const on=x.days.includes(t),n=streak(x);return `<button class="hchip ${on?'on':''}" data-hchip="${x.id}">${on?ic('check',14,2.6):''}<span>${esc(x.name)}</span>${n>1?`<small>${ic('flame',12,2)}${n}</small>`:''}</button>`}).join('')+`</div>`;
   }
-  if(soon.length)h+=`<div class="sec"><h2>Demnächst</h2><button class="link" data-go="tasks">Alle</button></div>`+soon.map(x=>itemRow(x)).join('');
-  $('view').innerHTML=h;bindQuick();
+  $('view').innerHTML=h;
 }
 
 /* ---------- Einstellungen und Rituale ---------- */
@@ -880,14 +949,19 @@ function renderSettings(){
   setTop('Einstellungen','',{back:true});
   const row=(l,k)=>`<div class="setrow"><label for="set-${k}">${l}</label><input type="time" id="set-${k}" data-set="${k}" value="${settings[k]}"></div>`;
   let h=`<div class="sec"><h2>Tageszeiten</h2></div><div class="card">${row('Morgen beginnt um','m')}${row('Mittag beginnt um','n')}${row('Abend beginnt um','e')}<p class="hint" style="margin:10px 0 0">Danach richten sich die Begrüßung und die Hinweise auf der Startseite.</p><div id="set-msg" class="note-msg" role="status"></div></div>`;
-  h+=`<div class="sec"><h2>Startseite</h2></div><div class="card"><div class="setrow"><label for="set-max">Hinweise gleichzeitig zeigen</label><select id="set-max" data-set="max">${[2,3,4,5,6].map(n=>`<option ${+settings.max===n?'selected':''}>${n}</option>`).join('')}</select></div></div>`;
+  const wd=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+  const sel=(k)=>`<select id="set-${k}" data-set="${k}">${wd.map((n,i)=>`<option value="${i}" ${+settings[k]===i?'selected':''}>${n}</option>`).join('')}</select>`;
+  h+=`<div class="sec"><h2>Wochenrhythmus</h2></div><div class="card"><div class="setrow"><label for="set-planDay">Ich plane die nächste Woche ab</label>${sel('planDay')}</div><div class="setrow"><label for="set-shopDay">Mein Einkaufstag</label>${sel('shopDay')}</div><p class="hint" style="margin:10px 0 0">Ab dem Planungstag fragt die Startseite nach der nächsten Woche. Am Einkaufstag erinnert sie dich ans Einkaufen.</p></div>`;
+  h+=`<div class="sec"><h2>Startseite</h2></div><div class="card"><div class="setrow"><label for="set-showHabits">Gewohnheiten auf der Startseite zeigen</label><select id="set-showHabits" data-set="showHabits"><option value="1" ${settings.showHabits!==false?'selected':''}>Ja</option><option value="0" ${settings.showHabits===false?'selected':''}>Nein</option></select></div></div>
+  <div class="sec"><h2>Hinweise</h2></div><div class="card"><div class="setrow"><label for="set-max">Hinweise gleichzeitig zeigen</label><select id="set-max" data-set="max">${[2,3,4,5,6].map(n=>`<option ${+settings.max===n?'selected':''}>${n}</option>`).join('')}</select></div></div>`;
   h+=`<div class="sec"><h2>Rituale</h2></div><p class="hint">Rituale erinnern dich an feste Termine, zum Beispiel „Sonntag: nächste Woche planen“. Sie erscheinen als Hinweis auf der Startseite, sobald du die App öffnest.</p>`;
   h+=rituals.length?rituals.map(ritCard).join(''):`<div class="empty"><b>Keine Rituale</b>Lege ein Ritual an oder stelle die Vorschläge wieder her.</div>`;
   h+=`<button class="btn main" data-ritnew="1" style="margin-top:12px">${ic('plus',18,2.2)} Neues Ritual</button><button class="btn" data-ritreset="1">Vorschläge wiederherstellen</button>`;
   $('view').innerHTML=h;
 }
 function setSetting(k,v){
-  if(k==='max'){settings.max=+v;saveC();return}
+  if(k==='max'||k==='planDay'||k==='shopDay'){settings[k]=+v;saveC();return}
+  if(k==='showHabits'){settings.showHabits=v==='1';saveC();return}
   const n=Object.assign({},settings,{[k]:v}),msg=$('set-msg');
   const okf=/^\d\d:\d\d$/.test(v)&&tmin(n.m)<tmin(n.n)&&tmin(n.n)<tmin(n.e);
   if(!okf){if(msg)msg.textContent='Die Reihenfolge muss stimmen: Morgen vor Mittag vor Abend.';$('set-'+k).value=settings[k];return}
@@ -901,7 +975,7 @@ function renderRitDays(){$('rt-days').innerHTML=WDSHORT.map((n,i)=>`<button type
 const CATS=['Privat','Arbeit','Haushalt','Gesundheit','Einkauf'];
 function renderTasks(){
   const t=today();
-  setTop('Aufgaben',tasks.filter(x=>!x.done).length+' offen');
+  setTop('Aufgaben',tasks.filter(x=>!x.done).length+' offen',{act:`<button class="tact" data-go="week">${ic('cal',16,2)} Woche</button>`});
   let l=tasks.filter(x=>!catFilter||x.cat===catFilter);
   if(taskSeg==='open')l=l.filter(x=>!x.done).sort(sortT);
   else if(taskSeg==='planned')l=l.filter(x=>!x.done&&x.date&&x.date>t).sort(sortT);
@@ -923,7 +997,7 @@ function renderWeek(){
   const days=[...Array(7)].map((_,i)=>addDays(mon,i));
   const short=d=>new Date(d+'T00:00').toLocaleDateString('de-DE',{day:'numeric',month:'short'});
   const sortW=(a,b)=>(a.done-b.done)||(a.time||'99:99').localeCompare(b.time||'99:99')||(a.prio-b.prio);
-  setTop('Woche',weekOffset===0?'Diese Woche':weekOffset===1?'Nächste Woche':weekOffset===-1?'Letzte Woche':'');
+  setTop('Woche',weekOffset===0?'Diese Woche':weekOffset===1?'Nächste Woche':weekOffset===-1?'Letzte Woche':'',{back:'Aufgaben'});
   let h=`<div class="wk-nav"><button data-wk="-1" aria-label="Vorherige Woche">${ic('chevL',20,2)}</button><b>${short(days[0])} – ${short(days[6])}</b><button data-wk="1" aria-label="Nächste Woche">${ic('chevR',20,2)}</button></div>`;
   if(weekOffset!==0)h+=`<button class="wadd" data-wk="reset">Zurück zu dieser Woche</button>`;
   if(weekOffset===0){
@@ -1121,7 +1195,7 @@ function renderProj(){
 
 /* ---------- Essensplan ---------- */
 const SLOTL={F:'Frühstück',M:'Mittag',A:'Abend'};
-let mealOff=0,mealSel={rid:null,title:'',portions:2};
+let mealOff=0,mealSeg='plan',mealSel={rid:null,title:'',portions:2};
 function monOf(off){const t=today();return addDays(t,-dowIdx(t)+7*off)}
 function weekOffsetOf(date){const m=addDays(date,-dowIdx(date));return Math.round((new Date(m+'T00:00')-new Date(monOf(0)+'T00:00'))/(7*864e5))}
 function pendingMeals(){
@@ -1140,17 +1214,29 @@ function mealChip(m){
   const r=m.rid?recOf(m.rid):null;
   return `<button class="mchip" data-medit="${m.id}"><span>${esc(m.title)}</span><small>${r&&m.portions?m.portions+' Port.':''}${m.listed?' '+ic('cart',13,2):''}</small></button>`;
 }
+function renderRecipes(segH){
+  setTop('Rezepte',recipes.length+' '+(recipes.length===1?'Rezept':'Rezepte'));
+  let h=segH;
+  h+=`<button class="btn" data-tplopen="1" style="margin-top:4px">${ic('book',18,2)} Rezeptvorlagen auswählen</button>`;
+  if(!recipes.length)h+=`<div class="empty"><b>Noch keine Rezepte</b>Wähle Vorlagen aus oder lege ein eigenes Rezept an. Daraus entstehen Wochenplan und Einkaufsliste.</div><button class="btn" data-rsample="1">6 Beispielrezepte laden</button>`;
+  else h+=recipes.map(r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard" data-ropen="${r.id}"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div><div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></button>`}).join('');
+  $('view').innerHTML=h;
+}
 function renderMeals(){
+  const segH=`<div class="seg">${[['plan','Wochenplan'],['recipes','Rezepte']].map(([k,n])=>`<button data-mseg="${k}" class="${mealSeg===k?'on':''}">${n}</button>`).join('')}</div>`;
+  if(mealSeg==='recipes')return renderRecipes(segH);
   const t=today(),mon=monOf(mealOff),days=[...Array(7)].map((_,i)=>addDays(mon,i));
   const short=d=>new Date(d+'T00:00').toLocaleDateString('de-DE',{day:'numeric',month:'short'});
   const wm=meals.filter(m=>m.date>=mon&&m.date<=days[6]);
-  setTop('Essensplan',mealOff===0?'Diese Woche':mealOff===1?'Nächste Woche':mealOff===-1?'Letzte Woche':'',{back:true});
-  let h=`<div class="wk-nav"><button data-mwk="-1" aria-label="Vorherige Woche">${ic('chevL',20,2)}</button><b>${short(days[0])} – ${short(days[6])}</b><button data-mwk="1" aria-label="Nächste Woche">${ic('chevR',20,2)}</button></div>`;
+  setTop('Essensplan',mealOff===0?'Diese Woche':mealOff===1?'Nächste Woche':mealOff===-1?'Letzte Woche':'');
+  let h=segH+`<div class="wk-nav"><button data-mwk="-1" aria-label="Vorherige Woche">${ic('chevL',20,2)}</button><b>${short(days[0])} – ${short(days[6])}</b><button data-mwk="1" aria-label="Nächste Woche">${ic('chevR',20,2)}</button></div>`;
   if(mealOff!==0)h+=`<button class="wadd" data-mwk="reset">Zurück zu dieser Woche</button>`;
   const prev=meals.filter(m=>m.date>=addDays(mon,-7)&&m.date<mon);
   if(!wm.length&&prev.length)h+=`<button class="btn" data-mcopy="1" style="margin-top:12px">Vorwoche übernehmen (${prev.length} ${prev.length===1?'Gericht':'Gerichte'})</button>`;
   const pend=pendingMeals();
   if(wm.some(m=>m.rid&&recOf(m.rid)))h+=`<div class="card mplan"><b>${pend.length?pend.length+' '+(pend.length===1?'Gericht':'Gerichte')+' noch nicht auf der Einkaufsliste':'Alle Zutaten dieser Woche sind auf der Liste'}</b><small>Vergangene Tage zählen nicht mit. Gleiche Zutaten werden zusammengerechnet.</small>${pend.length?`<button class="btn main" data-mtoshop="1">${ic('cart',18,2)} Zutaten auf die Einkaufsliste</button>`:''}</div>`;
+  const emptyA=days.filter(d=>d>=t&&!wm.some(m=>m.date===d&&m.slot==='A'));
+  if(recipes.length&&emptyA.length)h+=`<button class="btn" data-msuggest="1" style="margin-top:12px">${ic('plate',18,2)} Abendessen vorschlagen (${emptyA.length} ${emptyA.length===1?'Tag':'Tage'})</button>`;
   h+=days.map(d=>{
     const name=new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'short'});
     const rows=['F','M','A'].map(sl=>{
@@ -1180,13 +1266,14 @@ function renderMore(){
   setTop('Mehr','');
   const l=lastBackup();
   const lastTxt=l?'Letzte Sicherung: '+new Date(l).toLocaleDateString('de-DE',{day:'numeric',month:'long',year:'numeric'}):'Noch keine Sicherung gemacht';
-  let h=`<div class="rows">
-    <button class="row" data-go="shop"><span class="ri">${ic('cart',20)}</span><span class="rt">Einkauf &amp; Rezepte<small>${shop.filter(x=>!x.done).length} offen · ${recipes.length} ${recipes.length===1?'Rezept':'Rezepte'}</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
+  const hd=habits.filter(x=>x.days.includes(today())).length;
+  let h=`<div class="sec" style="margin-top:6px"><h2>Zusatz</h2></div><div class="rows">
+    <button class="row" data-go="habits"><span class="ri">${ic('repeat',20)}</span><span class="rt">Gewohnheiten<small>${habits.length?hd+' von '+habits.length+' heute erledigt':'Noch keine angelegt'}</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
     <button class="row" data-go="notes"><span class="ri">${ic('note',20)}</span><span class="rt">Notizen<small>${notes.length} ${notes.length===1?'Notiz':'Notizen'}</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
-    <button class="row" data-go="meals"><span class="ri">${ic('plate',20)}</span><span class="rt">Essensplan<small>${meals.filter(m=>m.date>=monOf(0)&&m.date<=addDays(monOf(0),6)).length} Gerichte diese Woche</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
+    <button class="row" data-go="week"><span class="ri">${ic('cal',20)}</span><span class="rt">Wochenplaner für Aufgaben<small>Aufgaben nach Tagen</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
     <button class="row" data-go="review"><span class="ri">${ic('moon',20)}</span><span class="rt">Tagesrückblick<small>${reviews.some(r=>r.date===today())?'Heute gespeichert':'Heute noch offen'}</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
     <button class="row" data-go="history"><span class="ri">${ic('book',20)}</span><span class="rt">Rückblicke<small>${reviews.length} ${reviews.length===1?'Eintrag':'Einträge'}</small></span><span class="chev">${ic('chevR',18,2)}</span></button>
-    <button class="row" data-go="settings"><span class="ri">${ic('sliders',20)}</span><span class="rt">Einstellungen &amp; Rituale<small>Tageszeiten, Hinweise, ${rituals.filter(r=>r.on).length} aktive Rituale</small></span><span class="chev">${ic('chevR',18,2)}</span></button></div>`;
+    <button class="row" data-go="settings"><span class="ri">${ic('sliders',20)}</span><span class="rt">Einstellungen &amp; Rituale<small>Tageszeiten, Wochenrhythmus, ${rituals.filter(r=>r.on).length} aktive Rituale</small></span><span class="chev">${ic('chevR',18,2)}</span></button></div>`;
   h+=`<div class="sec"><h2>Datensicherung</h2></div><div class="card">
     <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--accent)">${ic('shield',24)}</span><div><b>${backupDue()?'Zeit für eine Sicherung':'Deine Daten sind auf diesem Handy'}</b><div class="meta" style="font-size:13px;margin-top:2px">${lastTxt}. Sichere regelmäßig, damit nichts verloren geht, wenn du das Handy wechselst oder den Browser-Speicher löschst.</div></div></div>
     <button class="btn main" data-bdl="1">${ic('down',18)} Sicherung herunterladen</button>
@@ -1555,7 +1642,7 @@ function addRecipeIngs(r,portions){
 function recipeToShop(r,portions){
   snap.last=snap();
   const res=addRecipeIngs(r,portions);saveS();
-  shopSeg='list';view='shop';render();
+  shopMode='plan';view='shop';render();
   toast(`„${r.name}“ auf der Liste: ${res.n} neu${res.m?', '+res.m+' zusammengefasst':''}`);
 }
 const SAMPLES=[
@@ -1570,9 +1657,54 @@ function makeSamples(){
   return SAMPLES.map(([name,portions,ings])=>({id:uid(),name,portions,note:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})}));
 }
 function recOf(id){return recipes.find(r=>r.id===id)}
+function suggestWeek(){
+  const t=today(),mon=monOf(mealOff),days=[...Array(7)].map((_,i)=>addDays(mon,i)).filter(d=>d>=t);
+  const wm=meals.filter(m=>m.date>=mon&&m.date<=addDays(mon,6));
+  const empty=days.filter(d=>!wm.some(m=>m.date===d&&m.slot==='A'));
+  if(!recipes.length||!empty.length){toast('Es gibt nichts zu füllen.',true);return}
+  const used=new Set(wm.filter(m=>m.rid).map(m=>m.rid));
+  const pool=recipes.filter(r=>!used.has(r.id)).sort(()=>Math.random()-.5);
+  snap.last=snap();let last=null,n=0;
+  empty.forEach(d=>{
+    let r=pool.shift();
+    if(!r){const alt=recipes.filter(x=>x.id!==last);r=alt[Math.floor(Math.random()*alt.length)]||recipes[0]}
+    last=r.id;meals.push({id:uid(),date:d,slot:'A',rid:r.id,title:r.name,portions:r.portions||2,listed:false});n++;
+  });
+  saveM();render();toast(n+' '+(n===1?'Abendessen':'Abendessen')+' vorgeschlagen. Tippe ein Gericht an, um es zu ändern.');
+}
+const MORE_TPL=[
+ ['Spaghetti Carbonara',4,[['Spaghetti',400,'g'],['Speck',150,'g'],['Eier',3,'Stk'],['Parmesan',80,'g'],['Pfeffer',1,'TL'],['Salz',1,'TL']]],
+ ['Lasagne',4,[['Lasagneplatten',250,'g'],['Hackfleisch',500,'g'],['Dosentomaten',1,'Dose'],['Zwiebel',1,'Stk'],['Knoblauch',2,'Zehe'],['Butter',40,'g'],['Mehl',40,'g'],['Milch',500,'ml'],['Reibekäse',150,'g'],['Olivenöl',2,'EL'],['Salz',1,'TL'],['Pfeffer',1,'TL'],['Oregano',1,'TL']]],
+ ['Chili con Carne',4,[['Hackfleisch',500,'g'],['Zwiebel',1,'Stk'],['Knoblauch',2,'Zehe'],['Paprika',2,'Stk'],['Dosentomaten',1,'Dose'],['Kidneybohnen',1,'Dose'],['Mais',1,'Dose'],['Tomatenmark',2,'EL'],['Chilipulver',1,'TL'],['Paprikapulver',2,'TL'],['Kreuzkümmel',1,'TL'],['Reis',250,'g'],['Öl',2,'EL'],['Salz',1,'TL']]],
+ ['Gemüsepfanne mit Reis',4,[['Reis',300,'g'],['Paprika',2,'Stk'],['Zucchini',1,'Stk'],['Karotte',2,'Stk'],['Zwiebel',1,'Stk'],['Champignons',200,'g'],['Sojasauce',3,'EL'],['Öl',2,'EL'],['Salz',1,'TL'],['Pfeffer',1,'TL']]],
+ ['Kartoffelsuppe',4,[['Kartoffel',800,'g'],['Karotte',2,'Stk'],['Lauch',1,'Stk'],['Zwiebel',1,'Stk'],['Gemüsebrühe',2,'TL'],['Sahne',100,'ml'],['Butter',20,'g'],['Petersilie',1,'Bund'],['Salz',1,'TL'],['Pfeffer',1,'TL'],['Muskat',1,'TL']]],
+ ['Ofenkartoffeln mit Quark',4,[['Kartoffel',1000,'g'],['Quark',500,'g'],['Schnittlauch',1,'Bund'],['Öl',3,'EL'],['Paprikapulver',1,'TL'],['Zitrone',1,'Stk'],['Salz',1,'TL']]],
+ ['Schnitzel mit Pommes und Salat',4,[['Schnitzel',4,'Stk'],['Mehl',50,'g'],['Eier',2,'Stk'],['Semmelbrösel',100,'g'],['Pommes',600,'g'],['Salat',1,'Stk'],['Tomate',2,'Stk'],['Öl',4,'EL'],['Zitrone',1,'Stk'],['Salz',1,'TL']]],
+ ['Fischstäbchen mit Kartoffelpüree',4,[['Fischstäbchen',1,'Pck'],['Kartoffel',800,'g'],['Milch',150,'ml'],['Butter',40,'g'],['TK-Erbsen',300,'g'],['Muskat',1,'TL'],['Salz',1,'TL']]],
+ ['Pesto-Nudeln',2,[['Penne',250,'g'],['Pesto',1,'Glas'],['Parmesan',40,'g'],['Kirschtomaten',150,'g'],['Salz',1,'TL']]],
+ ['Wraps mit Hähnchen',4,[['Wraps',1,'Pck'],['Hähnchenbrust',400,'g'],['Paprika',1,'Stk'],['Salat',1,'Stk'],['Tomate',2,'Stk'],['Gurke',1,'Stk'],['Joghurt',150,'g'],['Paprikapulver',1,'TL'],['Öl',2,'EL'],['Salz',1,'TL']]],
+ ['Rührei mit Brot',2,[['Eier',4,'Stk'],['Milch',50,'ml'],['Butter',10,'g'],['Brot',1,'Stk'],['Schnittlauch',1,'Bund'],['Salz',1,'Prise'],['Pfeffer',1,'Prise']]],
+ ['Nudelsalat',4,[['Penne',300,'g'],['Gurke',1,'Stk'],['Paprika',1,'Stk'],['Mais',1,'Dose'],['Schinken',150,'g'],['Mayonnaise',4,'EL'],['Joghurt',150,'g'],['Essig',2,'EL'],['Salz',1,'TL'],['Pfeffer',1,'TL']]],
+ ['Linsensuppe',4,[['Linsen',300,'g'],['Karotte',2,'Stk'],['Sellerie',1,'Stk'],['Zwiebel',1,'Stk'],['Dosentomaten',1,'Dose'],['Gemüsebrühe',2,'TL'],['Essig',1,'EL'],['Öl',2,'EL'],['Salz',1,'TL'],['Pfeffer',1,'TL']]],
+ ['Gemüse-Quiche',4,[['Blätterteig',1,'Pck'],['Zucchini',1,'Stk'],['Paprika',1,'Stk'],['Zwiebel',1,'Stk'],['Eier',3,'Stk'],['Sahne',200,'ml'],['Reibekäse',100,'g'],['Salz',1,'TL'],['Pfeffer',1,'TL']]],
+ ['Burger',4,[['Burgerbrötchen',1,'Pck'],['Hackfleisch',500,'g'],['Salat',1,'Stk'],['Tomate',2,'Stk'],['Zwiebel',1,'Stk'],['Käse',4,'Scheibe'],['Ketchup',4,'EL'],['Gewürzgurken',1,'Glas'],['Öl',2,'EL'],['Salz',1,'TL'],['Pfeffer',1,'TL']]],
+ ['Pilz-Rahmgeschnetzeltes mit Reis',4,[['Hähnchenbrust',500,'g'],['Champignons',300,'g'],['Zwiebel',1,'Stk'],['Sahne',200,'ml'],['Reis',300,'g'],['Butter',20,'g'],['Petersilie',1,'Bund'],['Hühnerbrühe',1,'TL'],['Salz',1,'TL'],['Pfeffer',1,'TL']]],
+ ['Haferflocken mit Joghurt und Obst',2,[['Haferflocken',100,'g'],['Joghurt',300,'g'],['Banane',2,'Stk'],['Apfel',1,'Stk'],['Honig',20,'g']]],
+ ['Abendbrot',2,[['Brot',1,'Stk'],['Butter',50,'g'],['Käse',150,'g'],['Schinken',100,'g'],['Gurke',1,'Stk'],['Tomate',2,'Stk']]]
+];
+const ALL_TPL=()=>SAMPLES.concat(MORE_TPL);
+const mkRecipe=([name,portions,ings])=>({id:uid(),name,portions,note:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})});
+let tplSel=new Set();
+function renderTpl(){
+  const have=new Set(recipes.map(r=>r.name)),l=ALL_TPL().filter(t=>!have.has(t[0]));
+  $('tpl-list').innerHTML=l.length?l.map(t=>`<button type="button" class="tpl ${tplSel.has(t[0])?'on':''}" data-tpl="${esc(t[0])}"><span class="tb">${tplSel.has(t[0])?ic('check',14,3):''}</span><span class="tn">${esc(t[0])}<small>${t[2].length} Zutaten · ${t[1]} Portionen</small></span></button>`).join(''):`<div class="empty"><b>Alles hinzugefügt</b>Du hast schon alle Vorlagen.</div>`;
+  const n=[...tplSel].filter(x=>l.some(t=>t[0]===x)).length;
+  $('tpl-ok').textContent=n?`${n} hinzufügen`:'Hinzufügen';$('tpl-ok').disabled=!n;
+  $('tpl-all').textContent=n===l.length&&l.length?'Keine auswählen':'Alle auswählen';$('tpl-all').hidden=!l.length;
+}
 const catOf=x=>x.cat||((ingFind(x.name)||{}).c)||'S';
 
-let shopSeg='list',recId=null,recPort=0;
+let shopMode='plan',recId=null,recPort=0;
 function shopRow(x,pantry){
   const src=x.r&&x.r.length?`<span class="meta">aus ${x.r.map(esc).join(', ')}</span>`:'';
   const amt=x.q!=null?`<span class="amt">${esc(fmtAmt(x.q,x.u))}</span>`:'';
@@ -1582,19 +1714,24 @@ function shopRow(x,pantry){
 function renderShop(){
   const open=shop.filter(x=>!x.done),done=shop.filter(x=>x.done);
   const must=open.filter(x=>x.p!==true),pan=open.filter(x=>x.p===true);
-  setTop(shopSeg==='recipes'?'Rezepte':'Einkaufsliste',shopSeg==='recipes'?recipes.length+' '+(recipes.length===1?'Rezept':'Rezepte'):must.length+' zu kaufen'+(pan.length?' · '+pan.length+' prüfen':''),{back:true});
-  const seg=[['list','Liste'],['recipes','Rezepte']];
-  let h=`<div class="seg">${seg.map(([k,n])=>`<button data-shseg="${k}" class="${shopSeg===k?'on':''}">${n}</button>`).join('')}</div>`;
-  if(shopSeg==='recipes'){
-    if(!recipes.length)h+=`<div class="empty"><b>Noch keine Rezepte</b>Lege ein Rezept an, dann setzt du alle Zutaten mit einem Tipp auf die Einkaufsliste. Gleiche Zutaten werden zusammengerechnet.</div><button class="btn main" data-rsample="1">Beispielrezepte laden</button>`;
-    else h+=recipes.map(r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard" data-ropen="${r.id}"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div><div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></button>`}).join('');
+  const store=shopMode==='store';
+  setTop('Einkauf',store?(done.length+' von '+(must.length+done.length)+' im Wagen'):must.length+' zu kaufen'+(pan.length?' · '+pan.length+' prüfen':''));
+  const seg=`<div class="seg">${[['plan','Planen'],['store','Im Laden']].map(([k,n])=>`<button data-shmode="${k}" class="${shopMode===k?'on':''}">${n}</button>`).join('')}</div>`;
+  let h=seg;
+  const catGroups=(l)=>CATO.map(c=>{const g=l.filter(x=>catOf(x)===c).sort((a,b)=>a.name.localeCompare(b.name,'de'));return g.length?`<div class="shcat">${CATL[c]}</div>`+g.map(x=>shopRow(x,false)).join(''):''}).join('');
+  if(store){
+    const tot=must.length+done.length;
+    if(!tot)h+=`<div class="empty"><b>Nichts zu kaufen</b>Die Liste ist leer.</div>`;
+    else h+=`<div class="card hero"><b>${done.length} von ${tot} im Wagen</b><small>${must.length?must.length+' '+(must.length===1?'Artikel fehlt':'Artikel fehlen')+' noch':'Alles im Wagen. Guten Heimweg.'}</small><div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${tot}" aria-valuenow="${done.length}"><i style="width:${Math.round(done.length/tot*100)}%"></i></div></div>`;
+    h+=catGroups(must);
+    if(pan.length)h+=`<details class="tbl"><summary>Vorrat prüfen (${pan.length})</summary><p class="hint">Hast du das zu Hause? „Fehlt“ setzt es auf die Einkaufsliste.</p>${pan.sort((a,b)=>a.name.localeCompare(b.name,'de')).map(x=>shopRow(x,true)).join('')}</details>`;
+    if(done.length)h+=`<div class="sec"><h2>Im Wagen</h2><span class="meta">${done.length}</span></div>`+done.map(x=>shopRow(x,false)).join('')+`<button class="btn main" data-sclear="1" style="margin-top:14px">Einkauf beendet: Abgehakte entfernen</button>`;
     $('view').innerHTML=h;return;
   }
   h+=`<form class="sform" id="sform" autocomplete="off"><input id="sname" type="text" placeholder="Artikel, z. B. 2 Tomaten" aria-label="Artikel"><button aria-label="Hinzufügen">${ic('plus',22,2.2)}</button></form><div class="sug" id="ssug"></div>`;
-  if(!shop.length)h+=`<div class="empty"><b>Die Liste ist leer</b>Schreibe oben einen Artikel auf, zum Beispiel „2 Tomaten“, oder setze die Zutaten eines Rezepts auf die Liste.</div>`;
+  if(!shop.length)h+=`<div class="empty"><b>Die Liste ist leer</b>Schreibe oben einen Artikel auf, zum Beispiel „2 Tomaten“, oder übernimm die Zutaten aus dem Wochenplan unter „Essen“.</div>`;
   if(must.length){
-    h+=`<div class="sec"><h2>Unbedingt kaufen</h2><span class="meta">${must.length}</span></div>`;
-    CATO.forEach(c=>{const g=must.filter(x=>catOf(x)===c).sort((a,b)=>a.name.localeCompare(b.name,'de'));if(g.length)h+=`<div class="shcat">${CATL[c]}</div>`+g.map(x=>shopRow(x,false)).join('')});
+    h+=`<div class="sec"><h2>Unbedingt kaufen</h2><span class="meta">${must.length}</span></div>`+catGroups(must);
   }
   if(pan.length){
     h+=`<div class="sec"><h2>Wahrscheinlich vorrätig</h2><button class="link" data-shaveall="1">Alles da</button></div><p class="hint">Schau kurz nach, ob du es zu Hause hast. „Fehlt“ schiebt es nach oben.</p>`+pan.sort((a,b)=>a.name.localeCompare(b.name,'de')).map(x=>shopRow(x,true)).join('');
@@ -1604,7 +1741,7 @@ function renderShop(){
 }
 function renderRecipe(){
   const r=recOf(recId);
-  if(!r){view='shop';shopSeg='recipes';return renderShop()}
+  if(!r){view='meals';mealSeg='recipes';return renderMeals()}
   if(!recPort)recPort=r.portions||2;
   const f=recPort/(r.portions||1);
   setTop(r.name,r.portions+' Portionen im Rezept',{back:'Rezepte'});
@@ -1684,7 +1821,7 @@ function setChips(){
 function setPrio(p){sheetPrio=p;document.querySelectorAll('#t-prio button').forEach(b=>b.classList.toggle('on',+b.dataset.sp===p))}
 function openSheet(mode,id,pre){
   sheet={mode,id:id||null};
-  $('tform').hidden=mode!=='task';$('hform').hidden=mode!=='habit';$('pform').hidden=mode!=='project';$('rform').hidden=mode!=='recipe';$('mform').hidden=mode!=='meal';$('ritform').hidden=mode!=='ritual';
+  $('tform').hidden=mode!=='task';$('hform').hidden=mode!=='habit';$('pform').hidden=mode!=='project';$('rform').hidden=mode!=='recipe';$('mform').hidden=mode!=='meal';$('ritform').hidden=mode!=='ritual';$('tplform').hidden=mode!=='tpl';
   if(mode==='task'){
     const x=id?tasks.find(t=>t.id==id):null;
     $('sh-title').textContent=x?'Aufgabe bearbeiten':'Neue Aufgabe';
@@ -1704,6 +1841,8 @@ function openSheet(mode,id,pre){
     const x=id?habits.find(h=>h.id==id):null;
     $('sh-title').textContent=x?'Gewohnheit bearbeiten':'Neue Gewohnheit';
     $('h-name').value=x?x.name:'';$('h-ask').value=x?(x.ask||'evening'):'evening';$('h-del').hidden=!x;
+  }else if(mode==='tpl'){
+    $('sh-title').textContent='Rezeptvorlagen';tplSel=new Set();renderTpl();
   }else if(mode==='ritual'){
     const x=id?rituals.find(q=>q.id==id):null;
     $('sh-title').textContent=x?'Ritual bearbeiten':'Neues Ritual';
@@ -1760,6 +1899,13 @@ $('tform').addEventListener('submit',e=>{
     if(x){const ch=x.date!==date||x.time!==time||String(x.rem??'')!==rem;Object.assign(x,f);if(ch){x.reminded=false;delete x.snoozeUntil}}
   }else tasks.push(Object.assign({id:Date.now(),reminded:false,done:false},f));
   saveT();closeSheet();checkReminders();render();
+});
+$('tplform').addEventListener('submit',e=>{
+  e.preventDefault();
+  const have=new Set(recipes.map(r=>r.name)),add=ALL_TPL().filter(t=>tplSel.has(t[0])&&!have.has(t[0]));
+  if(!add.length)return;
+  snap.last=snap();recipes=recipes.concat(add.map(mkRecipe));saveX();closeSheet();mealSeg='recipes';view='meals';render();
+  toast(add.length+' '+(add.length===1?'Rezept':'Rezepte')+' hinzugefügt');
 });
 $('ritform').addEventListener('submit',e=>{
   e.preventDefault();
@@ -1832,20 +1978,22 @@ document.addEventListener('click',e=>{
   if(D.ix!==undefined){sheetIngs.splice(+D.ix,1);renderIngs();return}
   if(D.rsug){$('r-iname').value=D.rsug;const e=ingFind(D.rsug);if(e)$('r-iu').value=e.u;$('r-sug').innerHTML='';$('r-iq').focus();return}
   if(D.radd){addIngFromInputs();return}
+  if(D.tpl!==undefined){if(tplSel.has(D.tpl))tplSel.delete(D.tpl);else tplSel.add(D.tpl);renderTpl();return}
+  if(D.tplall){const have=new Set(recipes.map(r=>r.name)),l=ALL_TPL().filter(t=>!have.has(t[0]));if(tplSel.size>=l.length)tplSel=new Set();else tplSel=new Set(l.map(t=>t[0]));renderTpl();return}
   if(D.rtd!==undefined){const d=+D.rtd;ritDays=ritDays.includes(d)?ritDays.filter(x=>x!==d):[...ritDays,d];renderRitDays();$('rt-dmsg').textContent='';return}
   if(D.rtdel){const id=+sheet.id;closeSheet();destructive('Ritual gelöscht',()=>{rituals=rituals.filter(q=>q.id!==id);saveRi()});return}
   if(D.mrec){const r=recOf(+D.mrec);if(r){mealSel={rid:r.id,title:r.name,portions:r.portions||2};$('m-q').value=r.name;renderMealPick()}return}
   if(D.mfree){mealSel={rid:null,title:$('m-q').value.trim(),portions:null};renderMealPick();return}
   if(D.mport){mealSel.portions=Math.max(1,Math.min(50,mealSel.portions+(+D.mport)));renderMealPick();return}
   if(D.mdel){const id=+sheet.id;closeSheet();destructive('Gericht gelöscht',()=>{meals=meals.filter(q=>q.id!==id);saveM()});return}
-  if(D.rdel){const id=+sheet.id;closeSheet();destructive('Rezept gelöscht',()=>{recipes=recipes.filter(q=>q.id!==id);saveX();if(view==='recipe'){view='shop';shopSeg='recipes'}});return}
+  if(D.rdel){const id=+sheet.id;closeSheet();destructive('Rezept gelöscht',()=>{recipes=recipes.filter(q=>q.id!==id);saveX();if(view==='recipe'){view='meals';mealSeg='recipes'}});return}
   if(D.close){closeSheet();return}
   if(D.pdel){const id=+sheet.id;closeSheet();destructive('Projekt gelöscht, Aufgaben bleiben',()=>{projects=projects.filter(q=>q.id!=id);tasks.forEach(t=>{if(t.proj===id)t.proj=''});saveP();saveT();if(view==='proj'){view='tasks';taskSeg='projects'}});return}
   if(D.tdel){const id=sheet.id;closeSheet();destructive('Aufgabe gelöscht',()=>{tasks=tasks.filter(t=>t.id!=id);saveT()});return}
   if(D.hdel){const id=sheet.id;closeSheet();destructive('Gewohnheit gelöscht',()=>{habits=habits.filter(t=>t.id!=id);saveH()});return}
   if(D.nav){go(D.nav);return}
   if(D.go){go(D.go);return}
-  if(D.back){if(view==='notes'&&openNote!==null){leaveNote();render()}else{if(view==='proj')taskSeg='projects';if(view==='recipe')shopSeg='recipes';go(view==='review'?'home':view==='hstats'?'habits':view==='proj'?'tasks':view==='recipe'?'shop':'more')}return}
+  if(D.back){if(view==='notes'&&openNote!==null){leaveNote();render()}else{if(view==='proj')taskSeg='projects';if(view==='recipe')mealSeg='recipes';go(view==='review'?'home':view==='hstats'?'habits':view==='proj'?'tasks':view==='recipe'?'meals':view==='week'?'tasks':'more')}return}
   if(D.done){toggleTask(D.done)}
   else if(D.edit){openSheet('task',D.edit);return}
   else if(D.nact){const i=D.nact.lastIndexOf('|'),id=D.nact.slice(0,i),a=(nudgeActs[id]||[])[+D.nact.slice(i+1)];if(a){if(a.done)nHide(id);a.run()}render();return}
@@ -1860,7 +2008,13 @@ document.addEventListener('click',e=>{
   else if(D.medit){openSheet('meal',D.medit);return}
   else if(D.mtoshop){mealsToShop();return}
   else if(D.mcopy){const mon=monOf(mealOff),pv=meals.filter(m=>m.date>=addDays(mon,-7)&&m.date<mon);snap.last=snap();pv.forEach(m=>meals.push(Object.assign({},m,{id:uid(),date:addDays(m.date,7),listed:false})));saveM();render();toast('Vorwoche übernommen: '+pv.length+' '+(pv.length===1?'Gericht':'Gerichte'));return}
-  else if(D.shseg){shopSeg=D.shseg}
+  else if(D.addtask){openSheet('task');return}
+  else if(D.mseg){mealSeg=D.mseg}
+  else if(D.shmode){shopMode=D.shmode}
+  else if(D.shgo){shopMode=D.shgo;go('shop');return}
+  else if(D.mgo){mealOff=weekOffsetOf(D.mgo);mealSeg='plan';go('meals');return}
+  else if(D.msuggest){suggestWeek();return}
+  else if(D.tplopen){openSheet('tpl');return}
   else if(D.ropen){recId=+D.ropen;recPort=0;view='recipe';window.scrollTo(0,0)}
   else if(D.rport){recPort=Math.max(1,Math.min(50,recPort+(+D.rport)))}
   else if(D.rtoshop){const r=recOf(recId);if(r)recipeToShop(r,recPort||r.portions);return}
@@ -1933,7 +2087,7 @@ document.addEventListener('input',e=>{
 
 /* ---------- Start ---------- */
 setInterval(checkReminders,20000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkReminders()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkReminders();wakeLock(view==='shop'&&shopMode==='store')}});
 //@SEED
 checkReminders();
 render();
