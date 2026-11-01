@@ -47,7 +47,8 @@ let shop=load(K.s,[]),recipes=load(K.x,[]),meals=load(K.m,[]),books=load(K.bk,[]
 recipes.forEach(r=>{if(r.book&&!r.bid){let b=books.find(x=>x.name===r.book);if(!b){b={id:Date.now()+books.length,name:r.book,cover:''};books.push(b)}r.bid=b.id}delete r.book});
 let settings=cleanSettings(load(K.c,{}));
 let nstate=Object.assign({date:'',hide:{},snooze:{}},load(K.nu,{}));
-const saveS=()=>put(K.s,shop),saveX=()=>put(K.x,recipes),saveM=()=>put(K.m,meals),saveC=()=>put(K.c,settings),saveNu=()=>put(K.nu,nstate),saveB=()=>put(K.bk,books);
+const sy=()=>{try{Sync.touch()}catch(e){}};
+const saveS=()=>{put(K.s,shop);sy()},saveX=()=>{put(K.x,recipes);sy()},saveM=()=>{put(K.m,meals);sy()},saveC=()=>{put(K.c,settings);sy()},saveNu=()=>put(K.nu,nstate),saveB=()=>{put(K.bk,books);sy()};
 const saveAll=()=>{saveS();saveX();saveM();saveC();saveB()};
 saveX();saveB();
 const lastBackup=()=>{try{return +localStorage.getItem(K.b)||0}catch(e){return 0}};
@@ -156,6 +157,7 @@ function go(v){view=v;window.scrollTo(0,0);render()}
 /* ---------- Startseite ---------- */
 const NUDGE_SOURCES=[];   // Einhängepunkt für spätere Module
 let nudgeActs={};
+function syncCard(){return Sync.loggedIn()?[]:[{id:'sync-login',icon:'shield',title:'Gemeinsam nutzen',text:'Melde dich an, dann sehen du und deine Frau dieselben Rezepte, Pläne und Einkaufslisten.',acts:[{l:'Anmelden',run:()=>go('more')}]}]}
 function backupCard(){return backupDue()?[{id:'backup',icon:'shield',title:'Zeit für eine Sicherung',text:'Sichere deine Daten, damit nichts verloren geht.',acts:[{l:'Zur Sicherung',run:()=>go('more')}]}]:[]}
 function nsync(){const t=today();if(nstate.date!==t){nstate.date=t;nstate.hide={};saveNu()}}
 function nHidden(id){nsync();return !!nstate.hide[id]||(nstate.snooze[id]||0)>Date.now()}
@@ -192,6 +194,10 @@ function renderMore(){
   const wd=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
   const sel=k=>`<select id="set-${k}" data-set="${k}">${wd.map((n,i)=>`<option value="${i}" ${settings[k]===i?'selected':''}>${n}</option>`).join('')}</select>`;
   let h=`<div class="sec" style="margin-top:6px"><h2>Wochenrhythmus</h2></div><div class="card"><div class="setrow"><label for="set-planDay">Ich plane die nächste Woche ab</label>${sel('planDay')}</div><div class="setrow"><label for="set-shopDay">Mein Einkaufstag</label>${sel('shopDay')}</div><p class="hint" style="margin:10px 0 0">Ab dem Planungstag fragt die Startseite nach der nächsten Woche. Am Einkaufstag erinnert sie dich ans Einkaufen.</p></div>`;
+  h+=`<div class="sec" style="margin-top:6px"><h2>Gemeinsame Sicht</h2></div><div class="card">`;
+  if(Sync.loggedIn())h+=`<div class="bk"><span class="bki">${ic('shield',24)}</span><div><b>Angemeldet als ${esc(Sync.mail()||'Benutzer')}</b><div class="meta" style="font-size:13px;margin-top:2px">${esc(Sync.status())}. Änderungen sehen alle, die mit demselben Zugang angemeldet sind.</div></div></div><button class="btn" data-sysync="1">Jetzt abgleichen</button><button class="btn" data-sylogout="1">Abmelden</button>`;
+  else h+=`<p class="hint" style="margin:0 0 8px">Melde dich mit eurem gemeinsamen Zugang an. Danach sehen alle Handys dieselben Daten. Ohne Anmeldung bleibt alles nur auf diesem Handy.</p><form id="syform" autocomplete="on"><input id="sy-mail" type="email" placeholder="E-Mail" autocomplete="username" aria-label="E-Mail"><input id="sy-pw" type="password" placeholder="Passwort" autocomplete="current-password" aria-label="Passwort" style="margin-top:8px"><button type="submit" class="btn main" style="margin-top:10px">Anmelden</button></form><p class="hint" id="sy-msg" style="margin:8px 0 0">${esc(Sync.err())}</p>`;
+  h+=`</div>`;
   h+=`<div class="sec"><h2>Haushalt</h2></div><div class="card"><div class="meta" style="justify-content:center">Für wie viele Personen kochst du normalerweise?</div><div class="stepper"><button data-pers="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${settings.persons} ${settings.persons===1?'Person':'Personen'}</b><button data-pers="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div><p class="hint" style="margin:6px 0 0;text-align:center">Wochenplan, Kochansicht und Einkaufsliste rechnen Rezepte automatisch auf diese Zahl um. Im Rezept selbst trägst du ein, für wie viele Personen es im Kochbuch steht.</p></div>`;
   h+=`<div class="sec"><h2>Datensicherung</h2></div><div class="card">
     <div class="bk"><span class="bki">${ic('shield',24)}</span><div><b>${backupDue()?'Zeit für eine Sicherung':'Deine Daten sind auf diesem Handy'}</b><div class="meta" style="font-size:13px;margin-top:2px">${lastTxt}. Sichere regelmäßig, damit nichts verloren geht, wenn du das Handy wechselst oder den Browser-Speicher löschst.</div></div></div>
@@ -327,7 +333,7 @@ function renderMeals(){
     b+=`<div class="dlinks">${A.length?`<button data-madd="${d}|A">+ weiteres Abendessen</button>`:''}<button data-madd="${d}|M">+ Mittag</button><button data-madd="${d}|F">+ Frühstück</button></div>`;
     return `<section class="dcard ${isT?'today':''}"><div class="dhead"><b>${isT?'Heute':isTm?'Morgen':wd}</b><span>${isT||isTm?wd+', ':''}${dt.toLocaleDateString('de-DE',{day:'numeric',month:'short'})}</span></div>${b}</section>`;
   }).join('');
-  h+=backupCard().filter(c=>!nHidden(c.id)).map(nudgeHTML).join('');
+  h+=syncCard().concat(backupCard()).filter(c=>!nHidden(c.id)).map(nudgeHTML).join('');
   $('view').innerHTML=h;
 }
 const mealF={bk:'',cu:'',co:''};
@@ -640,6 +646,15 @@ $('b-file').addEventListener('change',async e=>{
   try{sheetCover=await coverFromFile(f);renderCover()}catch(err){toast('Das Bild konnte nicht geladen werden.',true)}
 });
 $('sugform').addEventListener('submit',e=>{e.preventDefault();const n=sugN,c=new Set(sugCu);closeSheet();suggestWeek(n,c)});
+document.addEventListener('submit',async e=>{
+  if(e.target.id!=='syform')return;
+  e.preventDefault();
+  const m=$('sy-mail').value.trim(),p=$('sy-pw').value;if(!m||!p)return;
+  $('sy-msg').textContent='Anmeldung läuft …';
+  const err=await Sync.login(m,p);
+  if(err){const el=$('sy-msg');if(el)el.textContent=err;return}
+  render();toast('Angemeldet. Die Daten werden abgeglichen.',true);
+});
 $('bform').addEventListener('submit',e=>{
   e.preventDefault();
   const name=$('b-name').value.trim();if(!name)return;
@@ -793,6 +808,8 @@ document.addEventListener('click',e=>{
   else if(D.bfile){$('bfile').click();return}
   else if(D.bapply){applyImport();return}
   else if(D.bcancel){pendingImport=null}
+  else if(D.sysync){Sync.sync();toast('Abgleich gestartet.',true);return}
+  else if(D.sylogout){Sync.logout();backupMsg='';render();toast('Abgemeldet. Die Daten bleiben auf diesem Handy.',true);return}
   else if(D.pers){setSetting('persons',settings.persons+(+D.pers));return}
   else if(D.cdone){cookDone.has(D.cdone)?cookDone.delete(D.cdone):cookDone.add(D.cdone)}
   else return;
@@ -820,4 +837,5 @@ document.addEventListener('input',e=>{
 /* ---------- Start ---------- */
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)wakeLock(needLock())});
 render();
+Sync.start();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
