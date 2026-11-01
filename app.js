@@ -112,6 +112,10 @@ function readBackup(text){
   }catch(e){pendingImport=null;backupMsg='Diese Datei ist keine gültige Sicherung.'}
   render();
 }
+$('rfile').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>readRecipeFile(String(r.result));r.onerror=()=>{backupMsg='Die Datei konnte nicht gelesen werden.';render()};r.readAsText(f);e.target.value='';
+});
 $('bfile').addEventListener('change',e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;
   const r=new FileReader();r.onload=()=>readBackup(String(r.result));r.onerror=()=>{backupMsg='Die Datei konnte nicht gelesen werden.';render()};r.readAsText(f);e.target.value='';
@@ -122,6 +126,46 @@ function applyImport(){
   shop=d.shop;recipes=d.recipes;meals=d.meals;books=d.books;recipes.forEach(r=>{if(r.book&&!r.bid){let b=books.find(x=>x.name===r.book);if(!b){b={id:Date.now()+books.length,name:r.book,cover:''};books.push(b)}r.bid=b.id}delete r.book});if(d.settings)settings=cleanSettings(d.settings);
   Object.entries(d.legacy).forEach(([k,v])=>{if(LEGACY[k])put(LEGACY[k],v)});
   saveAll();backupMsg='Sicherung eingespielt.';render();toast('Daten ersetzt');
+}
+
+/* ---------- Rezepte aus Datei hinzufügen (ergänzt, ersetzt nichts) ---------- */
+let recImport=null;
+const normName=t=>String(t||'').toLowerCase().replace(/[^a-z0-9äöüß]/g,'');
+function readRecipeFile(text){
+  try{
+    const o=JSON.parse(text);
+    const rs=Array.isArray(o)?o:o&&o.recipes;
+    if(!Array.isArray(rs)||!rs.length)throw 0;
+    const clean=rs.map(r=>({
+      name:String(r.name||'').trim(),portions:Math.max(1,Math.min(50,Math.round(+r.portions)||2)),
+      note:String(r.note||''),cuisine:String(r.cuisine||''),course:String(r.course||''),book:String(r.book||'').trim(),page:String(r.page||''),
+      ings:(Array.isArray(r.ings)?r.ings:[]).map(i=>({name:String(i.name||'').trim(),q:typeof i.q==='number'&&isFinite(i.q)?i.q:null,u:UNITS.includes(i.u)?i.u:'',p:i.p===true})).filter(i=>i.name)
+    })).filter(r=>r.name);
+    if(!clean.length)throw 0;
+    const names=[...new Set(clean.map(r=>r.book).filter(Boolean))];
+    recImport={recipes:clean,bookName:names[0]||'',target:''};
+    const m=books.find(b=>normName(b.name)===normName(recImport.bookName));
+    recImport.target=m?String(m.id):'new';
+    backupMsg='';
+  }catch(e){recImport=null;backupMsg='Diese Datei enthält keine Rezepte, die ich lesen kann.'}
+  render();
+}
+function applyRecipeImport(){
+  if(!recImport)return;
+  const ri=recImport;recImport=null;snap.last=snap();
+  let bk=null;
+  if(ri.target==='new'&&ri.bookName){bk={id:uid(),name:ri.bookName,cover:''};books.push(bk)}
+  else if(ri.target&&ri.target!=='new')bk=books.find(b=>String(b.id)===ri.target)||null;
+  let added=0,skipped=0;
+  ri.recipes.forEach(r=>{
+    const bid=bk?bk.id:null;
+    if(recipes.some(x=>(x.bid||null)===bid&&normName(x.name)===normName(r.name))){skipped++;return}
+    recipes.push({id:uid(),name:r.name,portions:r.portions,note:r.note,cuisine:r.cuisine,course:r.course,bid,page:r.page,img:'',ings:r.ings.map(i=>({id:uid(),name:i.name,q:i.q,u:i.u,p:i.p}))});
+    added++;
+  });
+  saveX();saveB();
+  backupMsg=added+' '+(added===1?'Rezept':'Rezepte')+' hinzugefügt'+(skipped?', '+skipped+' schon vorhanden und übersprungen':'')+'.';
+  render();toast(backupMsg);
 }
 
 /* ---------- Navigation und Darstellung ---------- */
@@ -205,6 +249,12 @@ function renderMore(){
     <button class="btn main" data-bdl="1">${ic('down',18)} Sicherung herunterladen</button>
     <button class="btn" data-bcopy="1">${ic('copy',18)} Als Text kopieren</button>
     <button class="btn" data-bfile="1">${ic('up',18)} Sicherung einspielen</button>`;
+  h+=`<button class="btn" data-rfile="1">${ic('up',18)} Rezepte aus Datei hinzufügen</button>`;
+  if(recImport){
+    const n=recImport.recipes.length;
+    h+=`<div class="note-msg"><b style="color:var(--text)">${n} ${n===1?'Rezept':'Rezepte'} hinzufügen?</b><br>Sie werden zu deinen Rezepten ergänzt. Vorhandene bleiben unverändert. Ins Kochbuch:<select id="ri-target" style="width:100%;margin-top:8px" aria-label="Kochbuch">${recImport.bookName?`<option value="new" ${recImport.target==='new'?'selected':''}>Neues Kochbuch „${esc(recImport.bookName)}“</option>`:''}${books.map(b=>`<option value="${b.id}" ${recImport.target===String(b.id)?'selected':''}>${esc(b.name)}</option>`).join('')}<option value="" ${recImport.target===''?'selected':''}>Eigene Rezepte (kein Kochbuch)</option></select></div>
+      <button class="btn main" data-rapply="1">Hinzufügen</button><button class="btn" data-rcancel="1">Abbrechen</button>`;
+  }
   if(pendingImport){
     const d=pendingImport.d,lg=Object.keys(d.legacy).length;
     h+=`<div class="note-msg"><b style="color:var(--text)">Aktuelle Daten ersetzen?</b><br>Die Sicherung enthält ${d.shop.length} Einkaufsartikel, ${d.recipes.length} Rezepte und ${d.meals.length} geplante Gerichte${lg?' sowie früher gespeicherte Aufgaben und Notizen (bleiben nur aufbewahrt)':''}${pendingImport.exported?' (vom '+new Date(pendingImport.exported).toLocaleDateString('de-DE')+')':''}. Du kannst danach „Rückgängig“ tippen.</div>
@@ -498,7 +548,7 @@ const ALL_TPL=()=>SAMPLES.concat(MORE_TPL);
 const COURSES=['Vorspeise','Hauptspeise','Beilage','Nachspeise','Backen','Frühstück','Snack'];
 const courseTxt=r=>r.course?(r.course==='Nachspeise'?'Nachspeise Dessert':r.course==='Backen'?'Backen Kuchen Gebäck':r.course):'';
 const guessCourse=n=>/salat|bruschetta/i.test(n)?'Vorspeise':/haferflocken|rührei/i.test(n)?'Frühstück':/abendbrot/i.test(n)?'Snack':'Hauptspeise';
-const CUISINES=['Deutsch','Italienisch','Asiatisch','Griechisch','Orientalisch','Mexikanisch','Amerikanisch','Französisch','Sonstige'];
+const CUISINES=['Deutsch','Italienisch','Asiatisch','Mediterran','Griechisch','Orientalisch','Mexikanisch','Amerikanisch','Französisch','Sonstige'];
 const guessCuisine=n=>/spaghetti|lasagne|carbonara|pesto|bruschetta|penne/i.test(n)?'Italienisch':/curry/i.test(n)?'Asiatisch':/chili|wrap/i.test(n)?'Mexikanisch':/griech/i.test(n)?'Griechisch':/burger/i.test(n)?'Amerikanisch':/quiche/i.test(n)?'Französisch':/suppe|kartoffel|schnitzel|fischst|rahm|pfannkuchen|abendbrot|rührei|haferflocken|nudelsalat|gemüsepfanne/i.test(n)?'Deutsch':'';
 const mkRecipe=([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),course:guessCourse(name),bid:null,page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})});
 let tplSel=new Set();
@@ -824,6 +874,9 @@ document.addEventListener('click',e=>{
   else if(D.bdl){downloadBackup();return}
   else if(D.bcopy){copyBackup();return}
   else if(D.bfile){$('bfile').click();return}
+  else if(D.rfile){$('rfile').click();return}
+  else if(D.rapply){applyRecipeImport();return}
+  else if(D.rcancel){recImport=null}
   else if(D.bapply){applyImport();return}
   else if(D.bcancel){pendingImport=null}
   else if(D.sysync){Sync.sync();toast('Abgleich gestartet.',true);return}
@@ -842,6 +895,7 @@ document.addEventListener('change',e=>{
   const t=e.target;if(!t.dataset)return;
   if(t.dataset.iu!==undefined){const i=sheetIngs[+t.dataset.iu];if(i)i.u=t.value}
   else if(t.dataset.set)setSetting(t.dataset.set,t.value);
+  else if(t.id==='ri-target'&&recImport)recImport.target=t.value;
 });
 document.addEventListener('input',e=>{
   const t=e.target;
