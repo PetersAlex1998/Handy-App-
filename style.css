@@ -235,3 +235,13 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 .bprev{aspect-ratio:1/1;max-width:200px;border-radius:24px;background:var(--soft);display:grid;place-items:center;overflow:hidden;color:var(--accent);text-align:center}
 .bprev img{width:100%;height:100%;object-fit:cover}
 .bprev span{display:flex;flex-direction:column;align-items:center;gap:6px}
+
+#rsearch{-webkit-appearance:none;appearance:none}
+
+.slist{margin-top:6px}
+.srow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:12px 2px;color:var(--text)}
+.srow .si{width:36px;height:36px;border-radius:12px;background:var(--soft);display:grid;place-items:center;flex:none;color:var(--accent)}
+.srow .st{flex:1;min-width:0;display:flex;flex-direction:column}
+.srow .st b{font-weight:600;word-break:break-word}
+.srow .st small{color:var(--muted);font-size:12.5px}
+.srow .stag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);flex:none}
