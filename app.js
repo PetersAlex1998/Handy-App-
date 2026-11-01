@@ -2,6 +2,7 @@
 const $=id=>document.getElementById(id);
 /* ---------- Icons ---------- */
 const P={
+star:'<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.7 1-5.9L3.5 9.7l5.9-.8z"/>',
 sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 list:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L6.5 5M3.5 12l1.2 1.2L6.5 11M3.5 18l1.2 1.2L6.5 17"/>',
 cal:'<rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 3v3M16 3v3"/>',
@@ -246,7 +247,16 @@ let recCol='own';
 const bookOf=r=>r&&r.bid?books.find(b=>b.id===r.bid):null;
 function srcLine(r){const bk=bookOf(r),b=bk?('📖 '+esc(bk.name)+(r.page?', S. '+esc(r.page):'')):'';return [r.course?esc(r.course):'',r.cuisine?esc(r.cuisine):'',b].filter(Boolean).join(' · ')}
 const recCount=n=>n+' '+(n===1?'Rezept':'Rezepte');
-const recCard=r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard${r.img?' hasimg':''}" data-ropen="${r.id}">${r.img?`<img class="pthumb" src="${r.img}" alt="">`:''}<span class="pbody"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div>${srcLine(r)?`<div class="meta" style="margin-top:2px">${srcLine(r)}</div>`:''}<div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></span></button>`};
+const rateOk=r=>typeof r.rating==='number'&&r.rating>=1&&r.rating<=10;
+const rateTxt=n=>n.toFixed(1).replace('.',',');
+const rateBadge=r=>rateOk(r)?`<span class="rbadge">${ic('star',12,2.4)} ${rateTxt(r.rating)}</span>`:'';
+let ratingTmp=null,ratingKey='';
+function ratingBox(r,title){
+  const rk=view+':'+r.id;if(rk!==ratingKey){ratingKey=rk;ratingTmp=null}
+  const cur=rateOk(r)?r.rating:null,v=ratingTmp!==null?ratingTmp:cur;
+  return `<div class="card ratebox"><b>${title||'Deine Bewertung'}</b><div class="rval" id="rt-val">${v!==null?rateTxt(v)+' <small>von 10</small>':'<small>Noch nicht bewertet</small>'}</div><input type="range" id="rt-range" min="1" max="10" step="0.1" value="${v!==null?v:7}" aria-label="Bewertung von 1 bis 10"><div class="rscale"><span>1</span><span>5</span><span>10</span></div><div class="acts"><button type="button" class="del" data-rtclear="${r.id}" ${cur===null?'hidden':''}>Entfernen</button><button type="button" class="ok" id="rt-save" data-rtsave="${r.id}" ${ratingTmp===null?'disabled':''}>Bewertung speichern</button></div></div>`;
+}
+const recCard=r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard${r.img?' hasimg':''}" data-ropen="${r.id}">${r.img?`<img class="pthumb" src="${r.img}" alt="">`:''}<span class="pbody"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div>${rateOk(r)?`<div class="meta" style="margin-top:2px">${rateBadge(r)}</div>`:''}${srcLine(r)?`<div class="meta" style="margin-top:2px">${srcLine(r)}</div>`:''}<div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></span></button>`};
 let recQ='';
 function updateRecSearch(){
   const q=recQ.trim().toLowerCase(),main=$('rmain'),res=$('rres');if(!main||!res)return;
@@ -295,7 +305,7 @@ function renderCollection(){
 }
 function dishTile(m){
   const r=m.rid?recOf(m.rid):null,img=r&&r.img;
-  const sub=[r&&m.portions?m.portions+' '+(m.portions===1?'Person':'Personen'):'',r&&srcLine(r)?srcLine(r):''].filter(Boolean).join(' · ');
+  const sub=[r&&m.portions?m.portions+' '+(m.portions===1?'Person':'Personen'):'',r&&rateOk(r)?'★ '+rateTxt(r.rating):'',r&&srcLine(r)?srcLine(r):''].filter(Boolean).join(' · ');
   return `<div class="dish ${img?'':'noimg'}">${img?`<img src="${r.img}" alt="">`:`<span class="dbg">${ic('plate',64,1.2)}</span>`}<button class="dmain" data-medit="${m.id}" aria-label="${esc(m.title)} ändern"></button><div class="dcap"><b>${esc(m.title)}</b>${sub?`<small>${sub}</small>`:''}</div>${m.listed?`<span class="dlist" title="Zutaten stehen auf der Einkaufsliste">${ic('cart',14,2.2)}</span>`:''}${r?`<button class="dcook" data-cook="${r.id}|${m.portions||r.portions}" aria-label="Kochen: ${esc(m.title)}">${ic('plate',18,2)}<span>Kochen</span></button>`:''}</div>`;
 }
 function renderMeals(){
@@ -336,7 +346,7 @@ function renderMeals(){
   h+=syncCard().concat(backupCard()).filter(c=>!nHidden(c.id)).map(nudgeHTML).join('');
   $('view').innerHTML=h;
 }
-const mealF={bk:'',cu:'',co:''};
+const mealF={bk:'',cu:'',co:'',rt:''};
 function renderMealPick(){
   const raw=$('m-q').value.trim(),q=raw.toLowerCase();
   let h='';
@@ -347,15 +357,17 @@ function renderMealPick(){
     if(mealF.bk&&mealF.bk!=='own'&&!usedBooks.some(b=>String(b.id)===mealF.bk))mealF.bk='';
     if(mealF.cu&&!cus.includes(mealF.cu))mealF.cu='';
     const cos=COURSES.filter(c=>recipes.some(r=>r.course===c));if(mealF.co&&!cos.includes(mealF.co))mealF.co='';
+    const anyRated=recipes.some(rateOk);if(!anyRated)mealF.rt='';
     const fc=(k,v,l)=>`<button type="button" class="chip ${mealF[k]===v?'on':''}" data-mf="${k}|${esc(v)}">${esc(l)}</button>`;
     if(usedBooks.length)h+=`<div class="lbl">Kochbuch</div><div class="frow">${fc('bk','','Alle')}${hasOwn?fc('bk','own','Eigene'):''}${usedBooks.map(b=>fc('bk',String(b.id),b.name)).join('')}</div>`;
+    if(anyRated)h+=`<div class="lbl">Bewertung</div><div class="frow">${fc('rt','','Alle')}${[6,7,8,9].map(n=>fc('rt',String(n),'ab '+n)).join('')}</div>`;
     if(cos.length)h+=`<div class="lbl">Gang</div><div class="frow">${fc('co','','Alle')}${cos.map(c=>fc('co',c,c)).join('')}</div>`;
     if(cus.length)h+=`<div class="lbl">Küche</div><div class="frow">${fc('cu','','Alle')}${cus.map(c=>fc('cu',c,c)).join('')}</div>`;
     const l=recipes.filter(r=>(!q||(r.name+' '+((bookOf(r)||{}).name||'')+' '+(r.cuisine||'')+' '+courseTxt(r)).toLowerCase().includes(q))
-      &&(!mealF.bk||(mealF.bk==='own'?!bookOf(r):String(r.bid)===mealF.bk))&&(!mealF.cu||r.cuisine===mealF.cu)&&(!mealF.co||r.course===mealF.co))
+      &&(!mealF.bk||(mealF.bk==='own'?!bookOf(r):String(r.bid)===mealF.bk))&&(!mealF.cu||r.cuisine===mealF.cu)&&(!mealF.co||r.course===mealF.co)&&(!mealF.rt||(rateOk(r)&&r.rating>=+mealF.rt)))
       .sort((a,b)=>a.name.localeCompare(b.name,'de'));
     h+=`<div class="lbl">${l.length} ${l.length===1?'Rezept':'Rezepte'}</div>`;
-    h+=l.length?`<div class="plist">${l.map(r=>`<button type="button" class="srow ${mealSel.rid===r.id?'sel':''}" data-mrec="${r.id}">${r.img?`<img class="sthumb" src="${r.img}" alt="">`:`<span class="si">${ic('plate',20,1.8)}</span>`}<span class="st"><b>${esc(r.name)}</b>${srcLine(r)?`<small>${srcLine(r)}</small>`:''}</span>${mealSel.rid===r.id?`<span class="stag">${ic('check',18,3)}</span>`:''}</button>`).join('')}</div>`:`<p class="hint">Kein Rezept passt zu dieser Auswahl.</p>`;
+    h+=l.length?`<div class="plist">${l.map(r=>`<button type="button" class="srow ${mealSel.rid===r.id?'sel':''}" data-mrec="${r.id}">${r.img?`<img class="sthumb" src="${r.img}" alt="">`:`<span class="si">${ic('plate',20,1.8)}</span>`}<span class="st"><b>${esc(r.name)}</b>${srcLine(r)||rateOk(r)?`<small>${[rateOk(r)?'★ '+rateTxt(r.rating):'',srcLine(r)].filter(Boolean).join(' · ')}</small>`:''}</span>${mealSel.rid===r.id?`<span class="stag">${ic('check',18,3)}</span>`:''}</button>`).join('')}</div>`:`<p class="hint">Kein Rezept passt zu dieser Auswahl.</p>`;
   }
   if(q&&!recipes.some(r=>r.name.toLowerCase()===q))h+=`<button type="button" class="btn" data-mfree="1" style="margin-top:10px">Als eigenes Gericht: „${esc(raw)}“</button>`;
   if(mealSel.rid&&recOf(mealSel.rid)&&recOf(mealSel.rid).portions!==mealSel.portions)h+=`<p class="hint" style="margin:10px 0 0">Im Rezept: ${recOf(mealSel.rid).portions} ${recOf(mealSel.rid).portions===1?'Portion':'Portionen'}. Die Mengen werden umgerechnet.</p>`;
@@ -448,28 +460,29 @@ function sugEmpty(){
   const wm=meals.filter(m=>m.date>=mon&&m.date<=addDays(mon,6));
   return days.filter(d=>!wm.some(m=>m.date===d&&m.slot==='A'));
 }
-let sugN=1,sugCu=new Set();
+let sugN=1,sugCu=new Set(),sugMin=0;
 function openSuggest(){
   if(!recipes.length){toast('Lege zuerst Rezepte an, dann kann ich etwas vorschlagen.',true);return}
   if(!sugEmpty().length){toast('Alle Abende sind schon geplant.',true);return}
-  sugN=sugEmpty().length;sugCu=new Set();openSheet('sug');
+  sugN=sugEmpty().length;sugCu=new Set();sugMin=0;openSheet('sug');
 }
 function renderSug(){
   const max=sugEmpty().length,cus=[...new Set(recipes.map(r=>r.cuisine).filter(Boolean))];
   sugN=Math.max(1,Math.min(max,sugN));
-  const pool=recipes.filter(r=>!sugCu.size||sugCu.has(r.cuisine));
+  const pool=recipes.filter(r=>(!sugCu.size||sugCu.has(r.cuisine))&&(!sugMin||(rateOk(r)&&r.rating>=sugMin)));
   let h=`<div class="lbl" style="margin-top:4px">Wie viele Abendessen?</div><div class="stepper" style="margin:0"><button type="button" data-sugn="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${sugN} ${sugN===1?'Vorschlag':'Vorschläge'}</b><button type="button" data-sugn="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div><p class="hint" style="text-align:center;margin:4px 0 0">${max} ${max===1?'Abend ist':'Abende sind'} noch frei</p>`;
   if(cus.length)h+=`<div class="lbl">Besondere Vorlieben (optional)</div><div class="mpick" style="margin-top:0">${cus.map(c=>`<button type="button" class="chip ${sugCu.has(c)?'on':''}" data-sugcu="${esc(c)}">${esc(c)}</button>`).join('')}</div><p class="hint" style="margin:8px 0 0">${sugCu.size?pool.length+' passende '+(pool.length===1?'Rezept':'Rezepte'):'Nichts gewählt: Ich wähle zufällig aus allen Rezepten.'}</p>`;
   else h+=`<p class="hint" style="margin-top:12px">Ich wähle zufällig aus deinen Rezepten. Mit einer Küche pro Rezept kannst du Vorlieben wählen.</p>`;
+  if(recipes.some(rateOk))h+=`<div class="lbl">Mindestbewertung (optional)</div><div class="mpick" style="margin-top:0">${[0,6,7,8,9].map(n=>`<button type="button" class="chip ${sugMin===n?'on':''}" data-sugmin="${n}">${n?'ab '+n:'Egal'}</button>`).join('')}</div><p class="hint" style="margin:8px 0 0">${sugMin||sugCu.size?pool.length+' passende '+(pool.length===1?'Rezept':'Rezepte')+(sugMin?'. Nicht bewertete Rezepte werden dann übersprungen.':''):'Alle Rezepte kommen infrage.'}</p>`;
   h+=`<div class="acts"><button type="submit" class="ok">${ic('plate',18,2)} Vorschlagen</button></div>`;
   $('sug-body').innerHTML=h;
 }
-function suggestWeek(n,cus){
+function suggestWeek(n,cus,minR){
   const empty=sugEmpty();
   if(!recipes.length||!empty.length){toast('Es gibt nichts zu füllen.',true);return}
   const wm=meals.filter(m=>m.date>=mealFrom()&&m.date<=addDays(mealFrom(),6));
   const used=new Set(wm.filter(m=>m.rid).map(m=>m.rid));
-  const base=cus&&cus.size?recipes.filter(r=>cus.has(r.cuisine)):recipes;
+  const base=recipes.filter(r=>(!cus||!cus.size||cus.has(r.cuisine))&&(!minR||(rateOk(r)&&r.rating>=minR)));
   if(!base.length){toast('Dazu gibt es noch keine Rezepte.',true);return}
   const shuffle=a=>a.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
   const pool=shuffle(base.filter(r=>!used.has(r.id))),spare=shuffle(base);
@@ -549,6 +562,7 @@ function renderRecipe(){
   h+=`<div class="sec"><h2>Unbedingt kaufen</h2><span class="meta">${must.length}</span></div>`+(must.length?must.map(row).join(''):`<div class="empty" style="padding:12px">Keine Zutat markiert.</div>`);
   if(pan.length)h+=`<div class="sec"><h2>Wahrscheinlich vorrätig</h2><span class="meta">${pan.length}</span></div>`+pan.map(row).join('');
   if(r.note)h+=`<div class="sec"><h2>Zubereitung</h2></div><div class="card"><p class="pnote" style="margin:0">${esc(r.note)}</p></div>`;
+  h+=ratingBox(r);
   h+=`<button class="btn" data-redit="${r.id}" style="margin-top:18px">Rezept bearbeiten</button>`;
   $('view').innerHTML=h;
 }
@@ -567,6 +581,7 @@ function renderCook(){
   const steps=(r.note||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
   if(steps.length){h+=`<div class="sec"><h2>Zubereitung</h2></div>`+steps.map((t,k)=>`<button class="crow step ${ck('s'+k)?'done':''}" data-cdone="s${k}"><span class="cb">${ck('s'+k)?ic('check',14,3):k+1}</span><span class="rn">${esc(t)}</span></button>`).join('')}
   else if(!bkr)h+=`<div class="empty" style="padding:12px">Noch keine Zubereitung hinterlegt. Du kannst sie beim Bearbeiten des Rezepts eintragen.</div>`;
+  h+=ratingBox(r,'Wie hat es geschmeckt?');
   h+=`<button class="btn" data-redit="${r.id}" style="margin-top:18px">Rezept bearbeiten</button>`;
   $('view').innerHTML=h;
 }
@@ -645,7 +660,7 @@ $('b-file').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
   try{sheetCover=await coverFromFile(f);renderCover()}catch(err){toast('Das Bild konnte nicht geladen werden.',true)}
 });
-$('sugform').addEventListener('submit',e=>{e.preventDefault();const n=sugN,c=new Set(sugCu);closeSheet();suggestWeek(n,c)});
+$('sugform').addEventListener('submit',e=>{e.preventDefault();const n=sugN,c=new Set(sugCu),mr=sugMin;closeSheet();suggestWeek(n,c,mr)});
 document.addEventListener('submit',async e=>{
   if(e.target.id!=='syform')return;
   e.preventDefault();
@@ -750,6 +765,9 @@ document.addEventListener('click',e=>{
   if(D.radd){addIngFromInputs();return}
   if(D.tpl!==undefined){if(tplSel.has(D.tpl))tplSel.delete(D.tpl);else tplSel.add(D.tpl);renderTpl();return}
   if(D.tplall){const have=new Set(recipes.map(r=>r.name)),l=ALL_TPL().filter(t=>!have.has(t[0]));tplSel=tplSel.size>=l.length?new Set():new Set(l.map(t=>t[0]));renderTpl();return}
+  if(D.sugmin!==undefined){sugMin=+D.sugmin;renderSug();return}
+  if(D.rtsave){const r=recOf(+D.rtsave);if(r&&ratingTmp!==null){r.rating=Math.round(Math.max(1,Math.min(10,ratingTmp))*10)/10;saveX();toast('Bewertung gespeichert: '+rateTxt(r.rating),true);ratingTmp=null;render()}return}
+  if(D.rtclear){const r=recOf(+D.rtclear);if(r){delete r.rating;saveX();ratingTmp=null;render()}return}
   if(D.sugn){sugN+=+D.sugn;renderSug();return}
   if(D.sugcu){sugCu.has(D.sugcu)?sugCu.delete(D.sugcu):sugCu.add(D.sugcu);renderSug();return}
   if(D.mf){const[k,v]=D.mf.split('|');mealF[k]=v;renderMealPick();return}
@@ -829,6 +847,7 @@ document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='sname')updateShopSug();
   else if(t.id==='r-iname')updateIngSug();
+  else if(t.id==='rt-range'){ratingTmp=Math.round(parseFloat(t.value)*10)/10;$('rt-val').innerHTML=rateTxt(ratingTmp)+' <small>von 10</small>';const sb=$('rt-save');if(sb)sb.disabled=false}
   else if(t.id==='rsearch'){recQ=t.value;updateRecSearch()}
   else if(t.id==='m-q')renderMealPick();
   else if(t.dataset&&t.dataset.iq!==undefined){const i=sheetIngs[+t.dataset.iq];if(i){const v=t.value.replace(',','.');i.q=v===''||isNaN(parseFloat(v))?null:parseFloat(v)}}
