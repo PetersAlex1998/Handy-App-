@@ -140,7 +140,6 @@ function renderBar(){
   $('bar').innerHTML=TABS.map(([k,n,i])=>`<button data-nav="${k}" class="${group(view)===k?'on':''}" ${group(view)===k?'aria-current="page"':''}>${ic(i,24,group(view)===k?2.1:1.8)}<span>${n}</span>${k==='more'&&backupDue()?'<i class="dot" title="Sicherung fällig"></i>':''}${k==='shop'&&mc?`<i class="cnt" aria-label="${mc} zu kaufen">${Math.min(99,mc)}</i>`:''}</button>`).join('');
 }
 function fabInfo(){
-  if(view==='meals')return['meal','Gericht planen'];
   if(view==='rcol'&&recCol!=='own'&&!/^c[uo]:/.test(String(recCol)))return['recipe','Rezept hinzufügen'];
   if(view==='rcol'&&recCol==='own')return['recipe','Neues Rezept'];
   return null;
@@ -288,33 +287,47 @@ function renderCollection(){
   if(bk)h+=`<button class="btn" data-bedit="${bk.id}" style="margin-top:18px">Kochbuch bearbeiten</button>`;
   $('view').innerHTML=h;
 }
+function dishTile(m){
+  const r=m.rid?recOf(m.rid):null,img=r&&r.img;
+  const sub=[r&&m.portions?m.portions+' '+(m.portions===1?'Person':'Personen'):'',r&&srcLine(r)?srcLine(r):''].filter(Boolean).join(' · ');
+  return `<div class="dish ${img?'':'noimg'}">${img?`<img src="${r.img}" alt="">`:`<span class="dbg">${ic('plate',64,1.2)}</span>`}<button class="dmain" data-medit="${m.id}" aria-label="${esc(m.title)} ändern"></button><div class="dcap"><b>${esc(m.title)}</b>${sub?`<small>${sub}</small>`:''}</div>${m.listed?`<span class="dlist" title="Zutaten stehen auf der Einkaufsliste">${ic('cart',14,2.2)}</span>`:''}${r?`<button class="dcook" data-cook="${r.id}|${m.portions||r.portions}" aria-label="Kochen: ${esc(m.title)}">${ic('plate',18,2)}<span>Kochen</span></button>`:''}</div>`;
+}
 function renderMeals(){
   const t=today(),mon=mealFrom(),days=[...Array(7)].map((_,i)=>addDays(mon,i));
   const short=d=>new Date(d+'T00:00').toLocaleDateString('de-DE',{day:'numeric',month:'short'});
   const wm=meals.filter(m=>m.date>=mon&&m.date<=days[6]);
-  const t0=today(),dd=Math.round((new Date(mon+'T00:00')-new Date(t0+'T00:00'))/864e5);
+  const dd=Math.round((new Date(mon+'T00:00')-new Date(t+'T00:00'))/864e5);
   setTop('Essensplan',dd===0?'Heute und die nächsten 6 Tage':dd<0?'Frühere Tage':'Spätere Tage');
   nudgeActs={};
-  const step=foodStep(),cards=(step?[step]:[]).concat(backupCard()).filter(c=>!nHidden(c.id));
-  let h=cards.map(nudgeHTML).join('')+`<div class="wk-nav"><button data-mwk="-1" aria-label="7 Tage zurück">${ic('chevL',20,2)}</button><b>${short(days[0])} – ${short(days[6])}</b><button data-mwk="1" aria-label="7 Tage weiter">${ic('chevR',20,2)}</button></div>`;
-  h+=dd!==0?`<button class="wadd" data-mwk="reset">Zurück zu heute</button>`:`<button class="wadd" data-mwk="-1">${ic('chevL',16,2)} Letzte Tage ansehen</button>`;
+  const step=foodStep(),cards=(step&&step.id!=='step-tolist'?[step]:[]).filter(c=>!nHidden(c.id));
+  const hasA=d=>wm.some(m=>m.date===d&&m.slot==='A');
+  const planned=days.filter(hasA).length,emptyA=days.filter(d=>d>=t&&!hasA(d));
+  const pend=pendingMeals(),openN=shop.filter(x=>!x.done).length;
+  let h=cards.map(nudgeHTML).join('');
+  // Übersicht
+  h+=`<div class="card wsum"><div class="wsh"><b>${planned} von 7 Abenden geplant</b><span class="dots">${days.map(d=>`<i class="${hasA(d)?'on':''} ${d===t?'now':''}"></i>`).join('')}</span></div>`;
+  h+=`<div class="wsb">`;
+  if(recipes.length&&emptyA.length)h+=`<button class="btn" data-msuggest="1">${ic('plate',18,2)} Vorschlagen</button>`;
+  h+=`<button class="btn" data-go="shop">${ic('cart',18,2)} Einkaufsliste${openN?' ('+openN+')':''}</button></div>`;
+  if(pend.length)h+=`<button class="btn main" data-mtoshop="1" style="margin-top:8px">${ic('cart',18,2)} ${pend.length} ${pend.length===1?'Gericht':'Gerichte'} auf die Einkaufsliste</button>`;
+  else if(wm.some(m=>m.rid&&recOf(m.rid)))h+=`<p class="hint" style="margin:8px 0 0;text-align:center">${ic('check',14,3)} Alle Zutaten stehen auf der Liste</p>`;
+  h+=`</div>`;
+  // Wochennavigation
+  h+=`<div class="wk-nav"><button data-mwk="-1" aria-label="7 Tage zurück">${ic('chevL',20,2)}</button><b>${short(days[0])} – ${short(days[6])}</b><button data-mwk="1" aria-label="7 Tage weiter">${ic('chevR',20,2)}</button></div>`;
+  if(dd!==0)h+=`<button class="wadd" data-mwk="reset" style="display:block;margin:6px auto 0">Zurück zu heute</button>`;
   const prev=meals.filter(m=>m.date>=addDays(mon,-7)&&m.date<mon);
   if(!wm.length&&prev.length)h+=`<button class="btn" data-mcopy="1" style="margin-top:12px">Die 7 Tage davor übernehmen (${prev.length} ${prev.length===1?'Gericht':'Gerichte'})</button>`;
-  const pend=pendingMeals();
-  if(wm.some(m=>m.rid&&recOf(m.rid)))h+=`<div class="card mplan"><b>${pend.length?pend.length+' '+(pend.length===1?'Gericht':'Gerichte')+' noch nicht auf der Einkaufsliste':'Alle Zutaten sind auf der Liste'}</b><small>Vergangene Tage zählen nicht mit. Gleiche Zutaten werden zusammengerechnet.</small>${pend.length?`<button class="btn main" data-mtoshop="1">${ic('cart',18,2)} Zutaten auf die Einkaufsliste</button>`:''}</div>`;
-  const openN=shop.filter(x=>!x.done).length;
-  h+=`<button class="btn" data-go="shop" style="margin-top:12px">${ic('cart',18,2)} Zur Einkaufsliste${openN?' ('+openN+' offen)':''}</button>`;
-  const emptyA=days.filter(d=>d>=t&&!wm.some(m=>m.date===d&&m.slot==='A'));
-  if(recipes.length&&emptyA.length)h+=`<button class="btn" data-msuggest="1" style="margin-top:12px">${ic('plate',18,2)} Abendessen vorschlagen (${emptyA.length} ${emptyA.length===1?'Tag':'Tage'})</button>`;
+  // Tage
   h+=days.map(d=>{
-    const name=new Date(d+'T00:00').toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'short'});
-    const rows=['F','M','A'].map(sl=>{
-      const l=wm.filter(m=>m.date===d&&m.slot===sl).sort((a,b)=>a.id-b.id);
-      if(!l.length&&sl==='F')return '';
-      return `<div class="mealrow"><span class="ml">${SLOTL[sl]}</span><div class="mchips">${l.map(mealChip).join('')}<button class="madd" data-madd="${d}|${sl}">${l.length?'+ weiteres Gericht':'+ planen'}</button></div></div>`;
-    }).join('');
-    return `<section class="wday ${d===t?'today':''}"><h3><span>${name}${d===t?' · Heute':''}</span><button class="link" data-madd="${d}|F">+ Frühstück</button></h3>${rows}</section>`;
+    const dt=new Date(d+'T00:00'),wd=dt.toLocaleDateString('de-DE',{weekday:'long'}),isT=d===t,isTm=d===addDays(t,1);
+    const l=slot=>wm.filter(m=>m.date===d&&m.slot===slot).sort((a,b)=>a.id-b.id);
+    const A=l('A'),extra=l('F').concat(l('M'));
+    let b=A.length?A.map(dishTile).join(''):`<button class="dempty" data-madd="${d}|A">${ic('plus',22,2)}<span>Abendessen planen</span></button>`;
+    if(extra.length)b+=`<div class="dextra">${extra.map(m=>`<div class="drow"><span class="ml">${SLOTL[m.slot]}</span>${mealChip(m)}</div>`).join('')}</div>`;
+    b+=`<div class="dlinks">${A.length?`<button data-madd="${d}|A">+ weiteres Abendessen</button>`:''}<button data-madd="${d}|M">+ Mittag</button><button data-madd="${d}|F">+ Frühstück</button></div>`;
+    return `<section class="dcard ${isT?'today':''}"><div class="dhead"><b>${isT?'Heute':isTm?'Morgen':wd}</b><span>${isT||isTm?wd+', ':''}${dt.toLocaleDateString('de-DE',{day:'numeric',month:'short'})}</span></div>${b}</section>`;
   }).join('');
+  h+=backupCard().filter(c=>!nHidden(c.id)).map(nudgeHTML).join('');
   $('view').innerHTML=h;
 }
 const mealF={bk:'',cu:'',co:''};
