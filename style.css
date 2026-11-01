@@ -6,6 +6,7 @@
 :root[data-theme="dark"]{--bg:#171829;--card:#232639;--text:#F6EFE3;--muted:#A4A8C4;--msoft:#BFC4E0;--accent:#C3CFE9;--on-accent:#171829;--soft:#2F3459;--line:#363A57;--red:#E07A74;--amber:#E0A64A;--green:#4FA97B;--toast-bg:#3A3F6B;--toast-fg:#F6EFE3;--toast-act:#C3CFE9;--shadow:none;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
+html,body,button,input,select,textarea,a,label{touch-action:manipulation}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.5 var(--font);padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 body.lock{overflow:hidden}
