@@ -312,12 +312,25 @@ function renderMeals(){
   }).join('');
   $('view').innerHTML=h;
 }
+const mealF={bk:'',cu:''};
 function renderMealPick(){
   const raw=$('m-q').value.trim(),q=raw.toLowerCase();
-  const l=recipes.filter(r=>!q||(r.name+' '+((bookOf(r)||{}).name||'')+' '+(r.cuisine||'')).toLowerCase().includes(q)).slice(0,10);
   let h='';
-  if(!recipes.length)h+=`<p class="hint" style="margin-top:8px">Noch keine Rezepte vorhanden. Tippe oben ein Gericht ein oder lege Rezepte unter „Essen › Rezepte“ an.</p>`;
-  else h+=`<div class="mpick">${l.map(r=>`<button type="button" class="chip ${mealSel.rid===r.id?'on':''}" data-mrec="${r.id}">${esc(r.name)}</button>`).join('')}</div>`;
+  if(!recipes.length)h+=`<p class="hint" style="margin-top:8px">Noch keine Rezepte vorhanden. Tippe oben ein Gericht ein oder lege Rezepte unter „Rezepte“ an.</p>`;
+  else{
+    const cus=[...new Set(recipes.map(r=>r.cuisine).filter(Boolean))];
+    const usedBooks=books.filter(b=>recipes.some(r=>r.bid===b.id)),hasOwn=recipes.some(r=>!bookOf(r));
+    if(mealF.bk&&mealF.bk!=='own'&&!usedBooks.some(b=>String(b.id)===mealF.bk))mealF.bk='';
+    if(mealF.cu&&!cus.includes(mealF.cu))mealF.cu='';
+    const fc=(k,v,l)=>`<button type="button" class="chip ${mealF[k]===v?'on':''}" data-mf="${k}|${esc(v)}">${esc(l)}</button>`;
+    if(usedBooks.length)h+=`<div class="lbl">Kochbuch</div><div class="frow">${fc('bk','','Alle')}${hasOwn?fc('bk','own','Eigene'):''}${usedBooks.map(b=>fc('bk',String(b.id),b.name)).join('')}</div>`;
+    if(cus.length)h+=`<div class="lbl">Art</div><div class="frow">${fc('cu','','Alle')}${cus.map(c=>fc('cu',c,c)).join('')}</div>`;
+    const l=recipes.filter(r=>(!q||(r.name+' '+((bookOf(r)||{}).name||'')+' '+(r.cuisine||'')).toLowerCase().includes(q))
+      &&(!mealF.bk||(mealF.bk==='own'?!bookOf(r):String(r.bid)===mealF.bk))&&(!mealF.cu||r.cuisine===mealF.cu))
+      .sort((a,b)=>a.name.localeCompare(b.name,'de'));
+    h+=`<div class="lbl">${l.length} ${l.length===1?'Rezept':'Rezepte'}</div>`;
+    h+=l.length?`<div class="plist">${l.map(r=>`<button type="button" class="srow ${mealSel.rid===r.id?'sel':''}" data-mrec="${r.id}">${r.img?`<img class="sthumb" src="${r.img}" alt="">`:`<span class="si">${ic('plate',20,1.8)}</span>`}<span class="st"><b>${esc(r.name)}</b>${srcLine(r)?`<small>${srcLine(r)}</small>`:''}</span>${mealSel.rid===r.id?`<span class="stag">${ic('check',18,3)}</span>`:''}</button>`).join('')}</div>`:`<p class="hint">Kein Rezept passt zu dieser Auswahl.</p>`;
+  }
   if(q&&!recipes.some(r=>r.name.toLowerCase()===q))h+=`<button type="button" class="btn" data-mfree="1" style="margin-top:10px">Als eigenes Gericht: „${esc(raw)}“</button>`;
   if(mealSel.rid)h+=`<div class="lbl">Portionen</div><div class="stepper" style="margin:0"><button type="button" data-mport="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${mealSel.portions} ${mealSel.portions===1?'Portion':'Portionen'}</b><button type="button" data-mport="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div>`;
   else if(mealSel.title)h+=`<p class="hint" style="margin-top:10px">Eigenes Gericht: ${esc(mealSel.title)}</p>`;
@@ -671,6 +684,7 @@ document.addEventListener('click',e=>{
   if(D.radd){addIngFromInputs();return}
   if(D.tpl!==undefined){if(tplSel.has(D.tpl))tplSel.delete(D.tpl);else tplSel.add(D.tpl);renderTpl();return}
   if(D.tplall){const have=new Set(recipes.map(r=>r.name)),l=ALL_TPL().filter(t=>!have.has(t[0]));tplSel=tplSel.size>=l.length?new Set():new Set(l.map(t=>t[0]));renderTpl();return}
+  if(D.mf){const[k,v]=D.mf.split('|');mealF[k]=v;renderMealPick();return}
   if(D.mrec){const r=recOf(+D.mrec);if(r){mealSel={rid:r.id,title:r.name,portions:r.portions||2};$('m-q').value=r.name;renderMealPick()}return}
   if(D.mfree){mealSel={rid:null,title:$('m-q').value.trim(),portions:null};renderMealPick();return}
   if(D.mport){mealSel.portions=Math.max(1,Math.min(50,mealSel.portions+(+D.mport)));renderMealPick();return}
