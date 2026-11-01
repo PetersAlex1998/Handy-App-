@@ -245,3 +245,6 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 .srow .st b{font-weight:600;word-break:break-word}
 .srow .st small{color:var(--muted);font-size:12.5px}
 .srow .stag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);flex:none}
+
+.paste{margin:10px 0 0;border:1px solid var(--line);border-radius:14px;padding:4px 12px 12px;background:var(--bg)}
+.paste summary{padding:10px 0;font-weight:500;cursor:pointer;color:var(--accent)}

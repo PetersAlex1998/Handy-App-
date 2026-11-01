@@ -521,6 +521,22 @@ function updateIngSug(){
   const q=parseShopText($('r-iname').value).name;
   el.innerHTML=(q.length>=1?ingSuggest(q):[]).map(e=>`<button type="button" data-rsug="${esc(e.n)}">${esc(e.n)}<small>${e.u}</small></button>`).join('');
 }
+const FRAC={'½':.5,'¼':.25,'¾':.75,'⅓':1/3,'⅔':2/3,'⅛':.125};
+function parseIngLine(line){
+  let t=String(line).replace(/^[\s\-–•*·\u2022]+/,'').trim();if(!t)return null;
+  t=t.replace(/(\d)\s*([½¼¾⅓⅔⅛])/g,(m,a,f)=>String(+a+FRAC[f])).replace(/([½¼¾⅓⅔⅛])/g,(m,f)=>String(FRAC[f]));
+  t=t.replace(/(\d+)\s+(\d+)\/(\d+)/g,(m,a,b,c)=>String(+a+b/c)).replace(/(\d+)\/(\d+)/g,(m,b,c)=>String(+b/+c));
+  t=t.replace(/^(\d+(?:[.,]\d+)?)\s*[-–]\s*\d+(?:[.,]\d+)?/,'$1');          // „2-3“ zählt als 2
+  t=t.replace(/\([^)]*\)/g,' ').split(/[,;]/)[0].replace(/\s+/g,' ').trim();    // Klammern und Zusätze nach dem Komma weglassen
+  if(!t)return null;
+  const ps=parseShopText(t);if(!ps.name)return null;
+  const e=ingFind(ps.name);let u=ps.u;if(!u&&ps.q!=null&&e)u=e.u;
+  return{id:uid(),name:e?e.n:cap(ps.name),q:ps.q==null?null:Math.round(ps.q*100)/100,u:u||'',p:e?e.v===1:false};
+}
+function addIngLines(text){
+  const l=String(text).split(/\n+/).map(parseIngLine).filter(Boolean);
+  l.forEach(i=>sheetIngs.push(i));if(l.length){renderIngs();updateIngSug()}return l.length;
+}
 function addIngFromInputs(){
   const raw=$('r-iname').value.trim();if(!raw)return false;
   const ps=parseShopText(raw);let q=null,u=$('r-iu').value;
@@ -586,6 +602,8 @@ function openSheet(mode,id,pre){
     $('r-cuisine').innerHTML='<option value="">Keine Angabe</option>'+CUISINES.map(c=>`<option>${c}</option>`).join('');$('r-cuisine').value=x?x.cuisine||'':'';
     $('r-book').innerHTML='<option value="">Kein Kochbuch</option>'+books.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
     $('r-book').value=x?(x.bid||''):((pre&&pre.bid)||'');$('r-page').value=x?x.page||'':'';
+    $('r-paste').value='';$('r-page').placeholder='Seite';
+    if(!x&&pre&&pre.bid){const last=recipes.filter(r=>r.bid===pre.bid).pop();if(last){$('r-cuisine').value=last.cuisine||'';if(last.page)$('r-page').placeholder='zuletzt S. '+last.page}}
     $('r-iu').innerHTML='<option value="">Einheit</option>'+UNITS.map(u=>`<option>${u}</option>`).join('');
     $('r-iname').value='';$('r-iq').value='';
     sheetIngs=x?x.ings.map(i=>({...i})):[];renderIngs();updateIngSug();
@@ -649,6 +667,7 @@ document.addEventListener('click',e=>{
   if(D.mfree){mealSel={rid:null,title:$('m-q').value.trim(),portions:null};renderMealPick();return}
   if(D.mport){mealSel.portions=Math.max(1,Math.min(50,mealSel.portions+(+D.mport)));renderMealPick();return}
   if(D.mdel){const id=+sheet.id;closeSheet();destructive('Gericht gelöscht',()=>{meals=meals.filter(q=>q.id!==id);saveM()});return}
+  if(D.rpaste){const n=addIngLines($('r-paste').value);if(n){$('r-paste').value='';toast(n+' '+(n===1?'Zutat':'Zutaten')+' übernommen. Prüfe Menge und „Kaufen/Vorrat“ unten.',true)}else toast('Keine Zutaten erkannt. Eine Zutat pro Zeile, z. B. „200 g Reis“.',true);return}
   if(D.bpick){$('b-file').click();return}
   if(D.brm){sheetCover='';renderCover();return}
   if(D.bdel){const id=+sheet.id;closeSheet();destructive('Kochbuch gelöscht (die Rezepte bleiben bei „Eigene Rezepte“)',()=>{books=books.filter(q=>q.id!==id);recipes.forEach(r=>{if(r.bid===id)r.bid=null});saveB();saveX();view='recipes'});return}
