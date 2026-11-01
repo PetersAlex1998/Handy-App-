@@ -140,7 +140,7 @@ function renderBar(){
 }
 function fabInfo(){
   if(view==='meals')return['meal','Gericht planen'];
-  if(view==='rcol'&&recCol!=='own'&&!String(recCol).startsWith('cu:'))return['recipe','Rezept hinzufügen'];
+  if(view==='rcol'&&recCol!=='own'&&!/^c[uo]:/.test(String(recCol)))return['recipe','Rezept hinzufügen'];
   if(view==='rcol'&&recCol==='own')return['recipe','Neues Rezept'];
   return null;
 }
@@ -236,7 +236,7 @@ function mealChip(m){
 }
 let recCol='own';
 const bookOf=r=>r&&r.bid?books.find(b=>b.id===r.bid):null;
-function srcLine(r){const bk=bookOf(r),b=bk?('📖 '+esc(bk.name)+(r.page?', S. '+esc(r.page):'')):'';return [r.cuisine?esc(r.cuisine):'',b].filter(Boolean).join(' · ')}
+function srcLine(r){const bk=bookOf(r),b=bk?('📖 '+esc(bk.name)+(r.page?', S. '+esc(r.page):'')):'';return [r.course?esc(r.course):'',r.cuisine?esc(r.cuisine):'',b].filter(Boolean).join(' · ')}
 const recCount=n=>n+' '+(n===1?'Rezept':'Rezepte');
 const recCard=r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard${r.img?' hasimg':''}" data-ropen="${r.id}">${r.img?`<img class="pthumb" src="${r.img}" alt="">`:''}<span class="pbody"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div>${srcLine(r)?`<div class="meta" style="margin-top:2px">${srcLine(r)}</div>`:''}<div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></span></button>`};
 let recQ='';
@@ -244,7 +244,7 @@ function updateRecSearch(){
   const q=recQ.trim().toLowerCase(),main=$('rmain'),res=$('rres');if(!main||!res)return;
   main.hidden=!!q;res.hidden=!q;if(!q){res.innerHTML='';return}
   const bl=books.filter(b=>b.name.toLowerCase().includes(q));
-  const rl=recipes.filter(r=>[r.name,(bookOf(r)||{}).name||'',r.cuisine||'',r.ings.map(i=>i.name).join(' ')].join(' ').toLowerCase().includes(q));
+  const rl=recipes.filter(r=>[r.name,(bookOf(r)||{}).name||'',r.cuisine||'',courseTxt(r),r.ings.map(i=>i.name).join(' ')].join(' ').toLowerCase().includes(q));
   const row=(act,ic_,title,sub,tag)=>`<button class="srow" ${act}><span class="si">${ic(ic_,20,1.8)}</span><span class="st"><b>${esc(title)}</b>${sub?`<small>${sub}</small>`:''}</span><span class="stag">${tag}</span></button>`;
   const items=bl.map(b=>({n:b.name,h:row(`data-rcol="${b.id}"`,'book',b.name,recCount(recipes.filter(r=>r.bid===b.id).length),'Buch')}))
     .concat(rl.map(r=>({n:r.name,h:row(`data-ropen="${r.id}"`,'plate',r.name,srcLine(r),'Rezept')})))
@@ -263,14 +263,16 @@ function renderRecipes(){
   h+=tile('data-bnew="1"',`<span class="mi">${ic('plus',30,1.8)}</span><b>Kochbuch hinzufügen</b>`,'add');
   h+=`</div>`;
   const cus=[...new Set(recipes.map(r=>r.cuisine).filter(Boolean))];
+  const cos=COURSES.filter(c=>recipes.some(r=>r.course===c));
+  if(cos.length)h+=`<div class="sec"><h2>Nach Gang</h2></div><div class="frow">${cos.map(c=>`<button class="chip" data-rcol="co:${esc(c)}">${esc(c)} <small>${recipes.filter(r=>r.course===c).length}</small></button>`).join('')}</div>`;
   if(cus.length)h+=`<div class="sec"><h2>Nach Küche</h2></div><div class="frow">${cus.map(c=>`<button class="chip" data-rcol="cu:${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
   h+=`</div><div id="rres" hidden></div>`;
   $('view').innerHTML=h;updateRecSearch();
 }
 function renderCollection(){
-  const isCu=String(recCol).startsWith('cu:'),bk=!isCu&&recCol!=='own'?books.find(b=>b.id===+recCol):null;
+  const isCo=String(recCol).startsWith('co:'),isCu0=String(recCol).startsWith('cu:'),isCu=isCu0||isCo,bk=!isCu&&recCol!=='own'?books.find(b=>b.id===+recCol):null;
   if(!isCu&&recCol!=='own'&&!bk){view='recipes';return renderRecipes()}
-  const list=isCu?recipes.filter(r=>r.cuisine===recCol.slice(3)):bk?recipes.filter(r=>r.bid===bk.id):recipes.filter(r=>!bookOf(r));
+  const list=isCo?recipes.filter(r=>r.course===recCol.slice(3)):isCu0?recipes.filter(r=>r.cuisine===recCol.slice(3)):bk?recipes.filter(r=>r.bid===bk.id):recipes.filter(r=>!bookOf(r));
   setTop(isCu?recCol.slice(3):bk?bk.name:'Eigene Rezepte',recCount(list.length),{back:'Rezepte'});
   let h='';
   if(bk){
@@ -312,7 +314,7 @@ function renderMeals(){
   }).join('');
   $('view').innerHTML=h;
 }
-const mealF={bk:'',cu:''};
+const mealF={bk:'',cu:'',co:''};
 function renderMealPick(){
   const raw=$('m-q').value.trim(),q=raw.toLowerCase();
   let h='';
@@ -322,11 +324,13 @@ function renderMealPick(){
     const usedBooks=books.filter(b=>recipes.some(r=>r.bid===b.id)),hasOwn=recipes.some(r=>!bookOf(r));
     if(mealF.bk&&mealF.bk!=='own'&&!usedBooks.some(b=>String(b.id)===mealF.bk))mealF.bk='';
     if(mealF.cu&&!cus.includes(mealF.cu))mealF.cu='';
+    const cos=COURSES.filter(c=>recipes.some(r=>r.course===c));if(mealF.co&&!cos.includes(mealF.co))mealF.co='';
     const fc=(k,v,l)=>`<button type="button" class="chip ${mealF[k]===v?'on':''}" data-mf="${k}|${esc(v)}">${esc(l)}</button>`;
     if(usedBooks.length)h+=`<div class="lbl">Kochbuch</div><div class="frow">${fc('bk','','Alle')}${hasOwn?fc('bk','own','Eigene'):''}${usedBooks.map(b=>fc('bk',String(b.id),b.name)).join('')}</div>`;
-    if(cus.length)h+=`<div class="lbl">Art</div><div class="frow">${fc('cu','','Alle')}${cus.map(c=>fc('cu',c,c)).join('')}</div>`;
-    const l=recipes.filter(r=>(!q||(r.name+' '+((bookOf(r)||{}).name||'')+' '+(r.cuisine||'')).toLowerCase().includes(q))
-      &&(!mealF.bk||(mealF.bk==='own'?!bookOf(r):String(r.bid)===mealF.bk))&&(!mealF.cu||r.cuisine===mealF.cu))
+    if(cos.length)h+=`<div class="lbl">Gang</div><div class="frow">${fc('co','','Alle')}${cos.map(c=>fc('co',c,c)).join('')}</div>`;
+    if(cus.length)h+=`<div class="lbl">Küche</div><div class="frow">${fc('cu','','Alle')}${cus.map(c=>fc('cu',c,c)).join('')}</div>`;
+    const l=recipes.filter(r=>(!q||(r.name+' '+((bookOf(r)||{}).name||'')+' '+(r.cuisine||'')+' '+courseTxt(r)).toLowerCase().includes(q))
+      &&(!mealF.bk||(mealF.bk==='own'?!bookOf(r):String(r.bid)===mealF.bk))&&(!mealF.cu||r.cuisine===mealF.cu)&&(!mealF.co||r.course===mealF.co))
       .sort((a,b)=>a.name.localeCompare(b.name,'de'));
     h+=`<div class="lbl">${l.length} ${l.length===1?'Rezept':'Rezepte'}</div>`;
     h+=l.length?`<div class="plist">${l.map(r=>`<button type="button" class="srow ${mealSel.rid===r.id?'sel':''}" data-mrec="${r.id}">${r.img?`<img class="sthumb" src="${r.img}" alt="">`:`<span class="si">${ic('plate',20,1.8)}</span>`}<span class="st"><b>${esc(r.name)}</b>${srcLine(r)?`<small>${srcLine(r)}</small>`:''}</span>${mealSel.rid===r.id?`<span class="stag">${ic('check',18,3)}</span>`:''}</button>`).join('')}</div>`:`<p class="hint">Kein Rezept passt zu dieser Auswahl.</p>`;
@@ -413,7 +417,7 @@ function recipeToShop(r,portions){
   toast(`„${r.name}“ auf der Liste: ${res.n} neu${res.m?', '+res.m+' zusammengefasst':''}`);
 }
 function makeSamples(){
-  return SAMPLES.map(([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),bid:null,page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})}));
+  return SAMPLES.map(([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),course:guessCourse(name),bid:null,page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})}));
 }
 function recOf(id){return recipes.find(r=>r.id===id)}
 function sugEmpty(){
@@ -455,9 +459,12 @@ function suggestWeek(n,cus){
   saveM();render();toast(cnt+' '+(cnt===1?'Abendessen':'Abendessen')+' vorgeschlagen. Tippe ein Gericht an, um es zu ändern.');
 }
 const ALL_TPL=()=>SAMPLES.concat(MORE_TPL);
+const COURSES=['Vorspeise','Hauptspeise','Beilage','Nachspeise','Backen','Frühstück','Snack'];
+const courseTxt=r=>r.course?(r.course==='Nachspeise'?'Nachspeise Dessert':r.course==='Backen'?'Backen Kuchen Gebäck':r.course):'';
+const guessCourse=n=>/salat|bruschetta/i.test(n)?'Vorspeise':/haferflocken|rührei/i.test(n)?'Frühstück':/abendbrot/i.test(n)?'Snack':'Hauptspeise';
 const CUISINES=['Deutsch','Italienisch','Asiatisch','Griechisch','Orientalisch','Mexikanisch','Amerikanisch','Französisch','Sonstige'];
 const guessCuisine=n=>/spaghetti|lasagne|carbonara|pesto|bruschetta|penne/i.test(n)?'Italienisch':/curry/i.test(n)?'Asiatisch':/chili|wrap/i.test(n)?'Mexikanisch':/griech/i.test(n)?'Griechisch':/burger/i.test(n)?'Amerikanisch':/quiche/i.test(n)?'Französisch':/suppe|kartoffel|schnitzel|fischst|rahm|pfannkuchen|abendbrot|rührei|haferflocken|nudelsalat|gemüsepfanne/i.test(n)?'Deutsch':'';
-const mkRecipe=([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),bid:null,page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})});
+const mkRecipe=([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),course:guessCourse(name),bid:null,page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})});
 let tplSel=new Set();
 function renderTpl(){
   const have=new Set(recipes.map(r=>r.name)),l=ALL_TPL().filter(t=>!have.has(t[0]));
@@ -647,10 +654,11 @@ function openSheet(mode,id,pre){
     $('sh-title').textContent=x?'Rezept bearbeiten':'Neues Rezept';
     $('r-name').value=x?x.name:'';$('r-port').value=x?x.portions:2;$('r-note').value=x?x.note||'':'';sheetImg=x?x.img||'':'';renderRImg();
     $('r-cuisine').innerHTML='<option value="">Keine Angabe</option>'+CUISINES.map(c=>`<option>${c}</option>`).join('');$('r-cuisine').value=x?x.cuisine||'':'';
+    $('r-course').innerHTML='<option value="">Keine Angabe</option>'+COURSES.map(c=>`<option>${c}</option>`).join('');$('r-course').value=x?x.course||'':'';
     $('r-book').innerHTML='<option value="">Kein Kochbuch</option>'+books.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
     $('r-book').value=x?(x.bid||''):((pre&&pre.bid)||'');$('r-page').value=x?x.page||'':'';
     $('r-paste').value='';$('r-page').placeholder='Seite';
-    if(!x&&pre&&pre.bid){const last=recipes.filter(r=>r.bid===pre.bid).pop();if(last){$('r-cuisine').value=last.cuisine||'';if(last.page)$('r-page').placeholder='zuletzt S. '+last.page}}
+    if(!x&&pre&&pre.bid){const last=recipes.filter(r=>r.bid===pre.bid).pop();if(last){$('r-cuisine').value=last.cuisine||'';$('r-course').value=last.course||'';if(last.page)$('r-page').placeholder='zuletzt S. '+last.page}}
     $('r-iu').innerHTML='<option value="">Einheit</option>'+UNITS.map(u=>`<option>${u}</option>`).join('');
     $('r-iname').value='';$('r-iq').value='';
     sheetIngs=x?x.ings.map(i=>({...i})):[];renderIngs();updateIngSug();
@@ -687,7 +695,7 @@ $('rform').addEventListener('submit',e=>{
   e.preventDefault();
   const name=$('r-name').value.trim();if(!name)return;
   addIngFromInputs();
-  const r={name,portions:Math.max(1,Math.min(50,parseInt($('r-port').value,10)||2)),note:$('r-note').value.trim(),cuisine:$('r-cuisine').value,img:sheetImg,bid:$('r-book').value?+$('r-book').value:null,page:$('r-page').value.trim(),ings:sheetIngs.map(i=>({...i}))};
+  const r={name,portions:Math.max(1,Math.min(50,parseInt($('r-port').value,10)||2)),note:$('r-note').value.trim(),cuisine:$('r-cuisine').value,course:$('r-course').value,img:sheetImg,bid:$('r-book').value?+$('r-book').value:null,page:$('r-page').value.trim(),ings:sheetIngs.map(i=>({...i}))};
   if(sheet.id){const x=recipes.find(q=>q.id==sheet.id);if(x)Object.assign(x,r);recPort=0}
   else{const n=Object.assign({id:uid()},r);recipes.push(n);recId=n.id;recPort=0;view='recipe';window.scrollTo(0,0)}
   saveX();closeSheet();render();
