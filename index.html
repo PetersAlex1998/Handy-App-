@@ -52,6 +52,10 @@
     </form>
 <form id="rform" autocomplete="off" hidden>
       <input id="r-name" type="text" placeholder="Rezeptname, z. B. Tomatensuppe" required>
+      <div class="lbl">Foto (optional)</div>
+      <div id="r-prev" class="bprev rprev"></div>
+      <div class="acts" style="margin-top:10px"><button type="button" id="r-pick" data-rpick="1">Foto wählen</button><button type="button" id="r-rm" data-rrm="1">Entfernen</button></div>
+      <input type="file" id="r-file" accept="image/*" hidden>
       <div class="lbl">Küche</div>
       <select id="r-cuisine" aria-label="Küche"></select>
       <div class="lbl">Aus einem Kochbuch? (optional)</div>

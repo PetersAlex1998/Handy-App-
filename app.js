@@ -238,7 +238,7 @@ let recCol='own';
 const bookOf=r=>r&&r.bid?books.find(b=>b.id===r.bid):null;
 function srcLine(r){const bk=bookOf(r),b=bk?('📖 '+esc(bk.name)+(r.page?', S. '+esc(r.page):'')):'';return [r.cuisine?esc(r.cuisine):'',b].filter(Boolean).join(' · ')}
 const recCount=n=>n+' '+(n===1?'Rezept':'Rezepte');
-const recCard=r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard" data-ropen="${r.id}"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div>${srcLine(r)?`<div class="meta" style="margin-top:2px">${srcLine(r)}</div>`:''}<div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></button>`};
+const recCard=r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard${r.img?' hasimg':''}" data-ropen="${r.id}">${r.img?`<img class="pthumb" src="${r.img}" alt="">`:''}<span class="pbody"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div>${srcLine(r)?`<div class="meta" style="margin-top:2px">${srcLine(r)}</div>`:''}<div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></span></button>`};
 let recQ='';
 function updateRecSearch(){
   const q=recQ.trim().toLowerCase(),main=$('rmain'),res=$('rres');if(!main||!res)return;
@@ -475,7 +475,7 @@ function renderRecipe(){
   setTop(r.name,r.portions+' Portionen im Rezept'+(r.cuisine?' · '+r.cuisine:''),{back:'Rezepte'});
   const must=r.ings.filter(i=>!i.p),pan=r.ings.filter(i=>i.p);
   const row=i=>`<div class="rrow"><span class="rn">${esc(i.name)}</span><span class="ra">${i.q!=null?esc(fmtAmt(Math.round(i.q*f*100)/100,i.u)):'nach Bedarf'}</span></div>`;
-  let h=`<div class="card"><div class="meta" style="justify-content:center">Für wie viele Portionen?</div><div class="stepper"><button data-rport="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${recPort} ${recPort===1?'Portion':'Portionen'}</b><button data-rport="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div></div>`;
+  let h=(r.img?`<img class="rhero" src="${r.img}" alt="${esc(r.name)}">`:'')+`<div class="card"><div class="meta" style="justify-content:center">Für wie viele Portionen?</div><div class="stepper"><button data-rport="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${recPort} ${recPort===1?'Portion':'Portionen'}</b><button data-rport="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div></div>`;
   const bkr=bookOf(r);
   if(bkr)h+=`<div class="card srcbox">${ic('book',18,2)}<div><b>${esc(bkr.name)}</b><small>${r.page?'Seite '+esc(r.page):'Seite nicht angegeben'}</small></div></div>`;
   h+=`<button class="btn main" data-cook="${r.id}|${recPort}" style="margin-top:12px">${ic('plate',18,2)} Jetzt kochen</button>`;
@@ -493,7 +493,7 @@ function renderCook(){
   const f=cookPort/(r.portions||1);
   setTop(r.name,cookPort+' '+(cookPort===1?'Portion':'Portionen')+(r.cuisine?' · '+r.cuisine:''),{back:cookFrom==='meals'?'Essensplan':'Rezept'});
   const ck=k=>cookDone.has(k);
-  let h='';
+  let h=r.img?`<img class="rhero small" src="${r.img}" alt="${esc(r.name)}">`:'';
   const bkr=bookOf(r);
   if(bkr)h+=`<div class="card srcbox">${ic('book',18,2)}<div><b>${esc(bkr.name)}</b><small>${r.page?'Seite '+esc(r.page):'Seite nicht angegeben'}${r.note?'':' · Zubereitung steht im Kochbuch'}</small></div></div>`;
   h+=`<div class="sec"><h2>Zutaten</h2><span class="meta">${r.ings.filter(i=>ck('i'+i.id)).length}/${r.ings.length}</span></div>`;
@@ -551,17 +551,25 @@ function addIngFromInputs(){
 }
 
 /* ---------- Fenster von unten (Gericht, Rezept, Vorlagen) ---------- */
-let sheet={mode:null,id:null},sheetCover='';
+let sheet={mode:null,id:null},sheetCover='',sheetImg='';
+function renderRImg(){
+  $('r-prev').innerHTML=sheetImg?`<img src="${sheetImg}" alt="Foto">`:`<span>${ic('plate',30,1.6)}<small>Noch kein Foto</small></span>`;
+  $('r-rm').hidden=!sheetImg;$('r-pick').textContent=sheetImg?'Anderes Foto wählen':'Foto wählen';
+}
+$('r-file').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+  try{sheetImg=await coverFromFile(f,720);renderRImg()}catch(err){toast('Das Bild konnte nicht geladen werden.',true)}
+});
 function renderCover(){
   $('b-prev').innerHTML=sheetCover?`<img src="${sheetCover}" alt="Cover">`:`<span>${ic('book',34,1.6)}<small>Noch kein Cover</small></span>`;
   $('b-rm').hidden=!sheetCover;$('b-pick').textContent=sheetCover?'Anderes Bild wählen':'Cover-Bild wählen';
 }
-function coverFromFile(f){
+function coverFromFile(f,S=480){
   return new Promise((res,rej)=>{
     const fr=new FileReader();
     fr.onerror=rej;
     fr.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{
-      const S=480,sc=Math.min(1,S/Math.max(im.width,im.height)),c=document.createElement('canvas');
+      const sc=Math.min(1,S/Math.max(im.width,im.height)),c=document.createElement('canvas');
       c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
       c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.8))};im.src=fr.result};
     fr.readAsDataURL(f);
@@ -598,7 +606,7 @@ function openSheet(mode,id,pre){
   }else if(mode==='recipe'){
     const x=id?recipes.find(q=>q.id==id):null;
     $('sh-title').textContent=x?'Rezept bearbeiten':'Neues Rezept';
-    $('r-name').value=x?x.name:'';$('r-port').value=x?x.portions:2;$('r-note').value=x?x.note||'':'';
+    $('r-name').value=x?x.name:'';$('r-port').value=x?x.portions:2;$('r-note').value=x?x.note||'':'';sheetImg=x?x.img||'':'';renderRImg();
     $('r-cuisine').innerHTML='<option value="">Keine Angabe</option>'+CUISINES.map(c=>`<option>${c}</option>`).join('');$('r-cuisine').value=x?x.cuisine||'':'';
     $('r-book').innerHTML='<option value="">Kein Kochbuch</option>'+books.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
     $('r-book').value=x?(x.bid||''):((pre&&pre.bid)||'');$('r-page').value=x?x.page||'':'';
@@ -640,7 +648,7 @@ $('rform').addEventListener('submit',e=>{
   e.preventDefault();
   const name=$('r-name').value.trim();if(!name)return;
   addIngFromInputs();
-  const r={name,portions:Math.max(1,Math.min(50,parseInt($('r-port').value,10)||2)),note:$('r-note').value.trim(),cuisine:$('r-cuisine').value,bid:$('r-book').value?+$('r-book').value:null,page:$('r-page').value.trim(),ings:sheetIngs.map(i=>({...i}))};
+  const r={name,portions:Math.max(1,Math.min(50,parseInt($('r-port').value,10)||2)),note:$('r-note').value.trim(),cuisine:$('r-cuisine').value,img:sheetImg,bid:$('r-book').value?+$('r-book').value:null,page:$('r-page').value.trim(),ings:sheetIngs.map(i=>({...i}))};
   if(sheet.id){const x=recipes.find(q=>q.id==sheet.id);if(x)Object.assign(x,r);recPort=0}
   else{const n=Object.assign({id:uid()},r);recipes.push(n);recId=n.id;recPort=0;view='recipe';window.scrollTo(0,0)}
   saveX();closeSheet();render();
@@ -668,6 +676,8 @@ document.addEventListener('click',e=>{
   if(D.mport){mealSel.portions=Math.max(1,Math.min(50,mealSel.portions+(+D.mport)));renderMealPick();return}
   if(D.mdel){const id=+sheet.id;closeSheet();destructive('Gericht gelöscht',()=>{meals=meals.filter(q=>q.id!==id);saveM()});return}
   if(D.rpaste){const n=addIngLines($('r-paste').value);if(n){$('r-paste').value='';toast(n+' '+(n===1?'Zutat':'Zutaten')+' übernommen. Prüfe Menge und „Kaufen/Vorrat“ unten.',true)}else toast('Keine Zutaten erkannt. Eine Zutat pro Zeile, z. B. „200 g Reis“.',true);return}
+  if(D.rpick){$('r-file').click();return}
+  if(D.rrm){sheetImg='';renderRImg();return}
   if(D.bpick){$('b-file').click();return}
   if(D.brm){sheetCover='';renderCover();return}
   if(D.bdel){const id=+sheet.id;closeSheet();destructive('Kochbuch gelöscht (die Rezepte bleiben bei „Eigene Rezepte“)',()=>{books=books.filter(q=>q.id!==id);recipes.forEach(r=>{if(r.bid===id)r.bid=null});saveB();saveX();view='recipes'});return}
