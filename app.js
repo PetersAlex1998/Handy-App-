@@ -168,9 +168,9 @@ function foodStep(){
   const pend=meals.filter(m=>m.date>=mon&&m.date<=end&&m.date>=t&&m.rid&&!m.listed&&recOf(m.rid));
   const wk=off?'die nächste Woche':'diese Woche';
   if(!upcoming.length)return{id:'step-plan',cls:'next',prio:100,icon:'plate',title:off?'Plane die nächste Woche':'Plane deine Woche',text:'Lege fest, was es zu essen gibt. Die Einkaufsliste entsteht daraus.',
-    acts:[{l:'Woche planen',run:()=>{mealSeg='plan';mealOff=off;go('meals')}}].concat(recipes.length?[{l:'Vorschlag machen',run:()=>{mealSeg='plan';mealOff=off;suggestWeek()}}]:[{l:'Rezepte wählen',run:()=>{mealSeg='recipes';go('meals');openSheet('tpl')}}])};
+    acts:[{l:'Woche planen',run:()=>{mealSeg='plan';mealStart=off?monOf(off):null;go('meals')}}].concat(recipes.length?[{l:'Vorschlag machen',run:()=>{mealSeg='plan';mealStart=off?monOf(off):null;suggestWeek()}}]:[{l:'Rezepte wählen',run:()=>{mealSeg='recipes';go('meals');openSheet('tpl')}}])};
   if(pend.length)return{id:'step-tolist',cls:'next',prio:100,icon:'cart',title:pend.length+' '+(pend.length===1?'Gericht':'Gerichte')+' noch nicht auf der Einkaufsliste',text:'Übernimm die Zutaten für '+wk+'. Gleiche Zutaten werden zusammengerechnet.',
-    acts:[{l:'Zutaten übernehmen',run:()=>{mealOff=off;mealsToShop()}}]};
+    acts:[{l:'Zutaten übernehmen',run:()=>{mealStart=off?monOf(off):null;mealsToShop()}}]};
   if(pan.length)return{id:'step-pantry',cls:'next',prio:100,icon:'home',title:'Vorrat prüfen',text:pan.length+' '+(pan.length===1?'Zutat hast':'Zutaten hast')+' du wahrscheinlich zu Hause. Schau kurz nach, bevor du einkaufst.',
     acts:[{l:'Vorrat prüfen',run:()=>{shopMode='plan';go('shop')}}]};
   if(must.length)return{id:'step-shop',cls:'next',prio:100,icon:'cart',title:'Einkaufen: '+must.length+' '+(must.length===1?'Artikel':'Artikel'),text:dowIdx(t)===settings.shopDay?'Heute ist dein Einkaufstag.':'Alles ist geplant, die Liste ist fertig.',
@@ -246,11 +246,13 @@ function renderMore(){
 
 /* ---------- Essensplan und Rezepte (Tab "Essen") ---------- */
 const SLOTL={F:'Frühstück',M:'Mittag',A:'Abend'};
-let mealOff=0,mealSeg='plan',mealSel={rid:null,title:'',portions:2};
+let mealStart=null,mealSeg='plan',mealSel={rid:null,title:'',portions:2};
 function monOf(off){const t=today();return addDays(t,-dowIdx(t)+7*off)}
+function mealFrom(){return mealStart||today()}
+function focusMeal(date){const t=today();mealStart=(date>=t&&date<=addDays(t,6))?null:date}
 function weekOffsetOf(date){const m=addDays(date,-dowIdx(date));return Math.round((new Date(m+'T00:00')-new Date(monOf(0)+'T00:00'))/(7*864e5))}
 function pendingMeals(){
-  const t=today(),mon=monOf(mealOff),end=addDays(mon,6);
+  const t=today(),mon=mealFrom(),end=addDays(mon,6);
   return meals.filter(m=>m.date>=mon&&m.date<=end&&m.date>=t&&m.rid&&!m.listed&&recOf(m.rid));
 }
 function mealsToShop(){
@@ -276,16 +278,19 @@ function renderRecipes(segH){
 function renderMeals(){
   const segH=`<div class="seg">${[['plan','Wochenplan'],['recipes','Rezepte']].map(([k,n])=>`<button data-mseg="${k}" class="${mealSeg===k?'on':''}">${n}</button>`).join('')}</div>`;
   if(mealSeg==='recipes')return renderRecipes(segH);
-  const t=today(),mon=monOf(mealOff),days=[...Array(7)].map((_,i)=>addDays(mon,i));
+  const t=today(),mon=mealFrom(),days=[...Array(7)].map((_,i)=>addDays(mon,i));
   const short=d=>new Date(d+'T00:00').toLocaleDateString('de-DE',{day:'numeric',month:'short'});
   const wm=meals.filter(m=>m.date>=mon&&m.date<=days[6]);
-  setTop('Essensplan',mealOff===0?'Diese Woche':mealOff===1?'Nächste Woche':mealOff===-1?'Letzte Woche':'');
-  let h=segH+`<div class="wk-nav"><button data-mwk="-1" aria-label="Vorherige Woche">${ic('chevL',20,2)}</button><b>${short(days[0])} – ${short(days[6])}</b><button data-mwk="1" aria-label="Nächste Woche">${ic('chevR',20,2)}</button></div>`;
-  if(mealOff!==0)h+=`<button class="wadd" data-mwk="reset">Zurück zu dieser Woche</button>`;
+  const t0=today(),dd=Math.round((new Date(mon+'T00:00')-new Date(t0+'T00:00'))/864e5);
+  setTop('Essensplan',dd===0?'Heute und die nächsten 6 Tage':dd<0?'Frühere Tage':'Spätere Tage');
+  let h=segH+`<div class="wk-nav"><button data-mwk="-1" aria-label="7 Tage zurück">${ic('chevL',20,2)}</button><b>${short(days[0])} – ${short(days[6])}</b><button data-mwk="1" aria-label="7 Tage weiter">${ic('chevR',20,2)}</button></div>`;
+  h+=dd!==0?`<button class="wadd" data-mwk="reset">Zurück zu heute</button>`:`<button class="wadd" data-mwk="-1">${ic('chevL',16,2)} Letzte Tage ansehen</button>`;
   const prev=meals.filter(m=>m.date>=addDays(mon,-7)&&m.date<mon);
-  if(!wm.length&&prev.length)h+=`<button class="btn" data-mcopy="1" style="margin-top:12px">Vorwoche übernehmen (${prev.length} ${prev.length===1?'Gericht':'Gerichte'})</button>`;
+  if(!wm.length&&prev.length)h+=`<button class="btn" data-mcopy="1" style="margin-top:12px">Die 7 Tage davor übernehmen (${prev.length} ${prev.length===1?'Gericht':'Gerichte'})</button>`;
   const pend=pendingMeals();
-  if(wm.some(m=>m.rid&&recOf(m.rid)))h+=`<div class="card mplan"><b>${pend.length?pend.length+' '+(pend.length===1?'Gericht':'Gerichte')+' noch nicht auf der Einkaufsliste':'Alle Zutaten dieser Woche sind auf der Liste'}</b><small>Vergangene Tage zählen nicht mit. Gleiche Zutaten werden zusammengerechnet.</small>${pend.length?`<button class="btn main" data-mtoshop="1">${ic('cart',18,2)} Zutaten auf die Einkaufsliste</button>`:''}</div>`;
+  if(wm.some(m=>m.rid&&recOf(m.rid)))h+=`<div class="card mplan"><b>${pend.length?pend.length+' '+(pend.length===1?'Gericht':'Gerichte')+' noch nicht auf der Einkaufsliste':'Alle Zutaten sind auf der Liste'}</b><small>Vergangene Tage zählen nicht mit. Gleiche Zutaten werden zusammengerechnet.</small>${pend.length?`<button class="btn main" data-mtoshop="1">${ic('cart',18,2)} Zutaten auf die Einkaufsliste</button>`:''}</div>`;
+  const openN=shop.filter(x=>!x.done).length;
+  h+=`<button class="btn" data-go="shop" style="margin-top:12px">${ic('cart',18,2)} Zur Einkaufsliste${openN?' ('+openN+' offen)':''}</button>`;
   const emptyA=days.filter(d=>d>=t&&!wm.some(m=>m.date===d&&m.slot==='A'));
   if(recipes.length&&emptyA.length)h+=`<button class="btn" data-msuggest="1" style="margin-top:12px">${ic('plate',18,2)} Abendessen vorschlagen (${emptyA.length} ${emptyA.length===1?'Tag':'Tage'})</button>`;
   h+=days.map(d=>{
@@ -391,7 +396,7 @@ function makeSamples(){
 }
 function recOf(id){return recipes.find(r=>r.id===id)}
 function suggestWeek(){
-  const t=today(),mon=monOf(mealOff),days=[...Array(7)].map((_,i)=>addDays(mon,i)).filter(d=>d>=t);
+  const t=today(),mon=mealFrom(),days=[...Array(7)].map((_,i)=>addDays(mon,i)).filter(d=>d>=t);
   const wm=meals.filter(m=>m.date>=mon&&m.date<=addDays(mon,6));
   const empty=days.filter(d=>!wm.some(m=>m.date===d&&m.slot==='A'));
   if(!recipes.length||!empty.length){toast('Es gibt nichts zu füllen.',true);return}
@@ -546,7 +551,7 @@ $('mform').addEventListener('submit',e=>{
     const x=meals.find(q=>q.id==sheet.id);
     if(x){const ch=x.rid!==f.rid||x.portions!==f.portions;Object.assign(x,f);if(x.listed&&ch){x.listed=false;note='Hinweis: Die Zutaten standen schon auf der Einkaufsliste. Pass sie dort bei Bedarf an.'}}
   }else meals.push(Object.assign({id:uid(),listed:false},f));
-  saveM();closeSheet();mealOff=weekOffsetOf(date);render();
+  saveM();closeSheet();focusMeal(date);render();
   if(note)toast(note,true);
 });
 $('rform').addEventListener('submit',e=>{
@@ -591,13 +596,13 @@ document.addEventListener('click',e=>{
   if(D.nx){nHide(D.nx)}
   else if(D.nlater){nLater(D.nlater,+D.nms||0)}
   // Essen
-  else if(D.mwk){mealOff=D.mwk==='reset'?0:mealOff+(+D.mwk)}
+  else if(D.mwk){mealStart=D.mwk==='reset'?null:addDays(mealFrom(),7*(+D.mwk))}
   else if(D.madd){const[d,sl]=D.madd.split('|');openSheet('meal',null,{date:d,slot:sl});return}
   else if(D.medit){openSheet('meal',D.medit);return}
   else if(D.mtoshop){mealsToShop();return}
-  else if(D.mcopy){const mon=monOf(mealOff),pv=meals.filter(m=>m.date>=addDays(mon,-7)&&m.date<mon);snap.last=snap();pv.forEach(m=>meals.push(Object.assign({},m,{id:uid(),date:addDays(m.date,7),listed:false})));saveM();render();toast('Vorwoche übernommen: '+pv.length+' '+(pv.length===1?'Gericht':'Gerichte'));return}
+  else if(D.mcopy){const mon=mealFrom(),pv=meals.filter(m=>m.date>=addDays(mon,-7)&&m.date<mon);snap.last=snap();pv.forEach(m=>meals.push(Object.assign({},m,{id:uid(),date:addDays(m.date,7),listed:false})));saveM();render();toast('Vorwoche übernommen: '+pv.length+' '+(pv.length===1?'Gericht':'Gerichte'));return}
   else if(D.mseg){mealSeg=D.mseg}
-  else if(D.mgo){mealOff=weekOffsetOf(D.mgo);mealSeg='plan';go('meals');return}
+  else if(D.mgo){focusMeal(D.mgo);mealSeg='plan';go('meals');return}
   else if(D.msuggest){suggestWeek();return}
   else if(D.tplopen){openSheet('tpl');return}
   else if(D.ropen){recId=+D.ropen;recPort=0;view='recipe';window.scrollTo(0,0)}
