@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f8f5f0">
+<meta name="theme-color" content="#FEF6E9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171829" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Alltag">
@@ -13,16 +14,16 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <title>Mein Alltag</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,600;1,700&display=swap">
 <style>
 /* Layout: kopfzeile mit grossem Titel, Inhalt als Karten, feste Tab-Leiste unten, runder Plus-Knopf, Bottom-Sheet zum Erfassen */
-:root{--bg:#f8f5f0;--card:#fffdfa;--text:#2e2924;--muted:#8a8076;--accent:#8c6d3f;--on-accent:#fff;--soft:#f3e9d6;--line:#ece5da;--red:#c9645a;--amber:#d09a3c;--green:#3f9468;--shadow:0 1px 2px rgba(80,60,30,.05),0 8px 22px rgba(80,60,30,.06);--safe-top:env(safe-area-inset-top,0px);--serif:'Cormorant Garamond',Georgia,'Times New Roman',serif}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1815;--card:#252019;--text:#f1eadf;--muted:#a59b8e;--line:#39322a;--accent:#cfae72;--on-accent:#1f1a14;--soft:#3a3227;--shadow:none;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#1b1815;--card:#252019;--text:#f1eadf;--muted:#a59b8e;--line:#39322a;--accent:#cfae72;--on-accent:#1f1a14;--soft:#3a3227;--shadow:none;color-scheme:dark}
+:root{--bg:#FEF6E9;--card:#FFFBF4;--text:#232639;--muted:#666A86;--msoft:#474B69;--accent:#232639;--on-accent:#FEF6E9;--soft:#C3CFE9;--line:#E2DACB;--red:#B4524C;--amber:#946310;--green:#3F9468;--greenfill:#2F7F55;--toast-bg:#232639;--toast-fg:#FEF6E9;--toast-act:#C3CFE9;--shadow:0 1px 2px rgba(35,38,57,.05),0 8px 22px rgba(35,38,57,.07);--safe-top:env(safe-area-inset-top,0px);--font:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--head:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171829;--card:#232639;--text:#F6EFE3;--muted:#A4A8C4;--msoft:#BFC4E0;--accent:#C3CFE9;--on-accent:#171829;--soft:#2F3459;--line:#363A57;--red:#E07A74;--amber:#E0A64A;--green:#4FA97B;--toast-bg:#3A3F6B;--toast-fg:#F6EFE3;--toast-act:#C3CFE9;--shadow:none;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#171829;--card:#232639;--text:#F6EFE3;--muted:#A4A8C4;--msoft:#BFC4E0;--accent:#C3CFE9;--on-accent:#171829;--soft:#2F3459;--line:#363A57;--red:#E07A74;--amber:#E0A64A;--green:#4FA97B;--toast-bg:#3A3F6B;--toast-fg:#F6EFE3;--toast-act:#C3CFE9;--shadow:none;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.5 var(--font);padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 body.lock{overflow:hidden}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -33,7 +34,7 @@ button{cursor:pointer}
 /* Kopf */
 #top{padding-top:calc(var(--safe-top) + 16px);padding-bottom:4px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
 #top>div:first-child{min-width:0}
-h1{margin:0;font-family:var(--serif);font-size:36px;font-weight:600;line-height:1.1;letter-spacing:.01em}
+h1{margin:0;font-family:var(--head);font-size:30px;font-weight:700;font-style:italic;line-height:1.2;letter-spacing:-.01em}
 .sub{color:var(--muted);font-size:14px;letter-spacing:.03em}
 .back{border:0;background:none;color:var(--accent);padding:4px 0;display:inline-flex;align-items:center;gap:2px;font-size:15px}
 .tact{border:0;background:var(--card);color:var(--muted);box-shadow:var(--shadow);border-radius:12px;padding:9px 12px;display:inline-flex;gap:6px;align-items:center;font-size:14px}
@@ -45,12 +46,12 @@ h1{margin:0;font-family:var(--serif);font-size:36px;font-weight:600;line-height:
 .link{border:0;background:none;color:var(--accent);font-size:14px;padding:2px 0}
 .card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:16px}
 .hero{background:var(--soft);box-shadow:none}
-.hero b{font-family:var(--serif);font-size:24px;font-weight:600;display:block;line-height:1.2}
-.hero small{display:block;color:var(--muted);margin:2px 0 12px}
+.hero b{font-family:var(--head);font-size:20px;font-weight:600;display:block;line-height:1.3}
+.hero small{display:block;color:var(--msoft);margin:2px 0 12px}
 .prog{height:8px;border-radius:99px;background:var(--card);overflow:hidden}
 .prog i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .35s}
 .empty{text-align:center;color:var(--muted);padding:28px 8px}
-.empty b{display:block;color:var(--text);font-family:var(--serif);font-size:22px;font-weight:600;margin-bottom:2px}
+.empty b{display:block;color:var(--text);font-family:var(--head);font-size:18px;font-weight:600;margin-bottom:2px}
 
 /* Aufgaben */
 .item{display:flex;gap:12px;align-items:center;background:var(--card);padding:12px 14px 12px 12px;border-radius:18px;margin:8px 0;box-shadow:var(--shadow);border-left:4px solid var(--line)}
@@ -85,7 +86,7 @@ h1{margin:0;font-family:var(--serif);font-size:36px;font-weight:600;line-height:
 .day.today span{color:var(--accent);font-weight:700}
 .hchips{display:flex;flex-wrap:wrap;gap:8px}
 .hchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:99px;padding:8px 14px;font-size:14px;box-shadow:var(--shadow)}
-.hchip.on{background:var(--green);border-color:var(--green);color:#fff}
+.hchip.on{background:var(--greenfill);border-color:var(--greenfill);color:#fff}
 .hchip small{display:inline-flex;align-items:center;gap:2px;opacity:.85}
 
 /* Woche */
@@ -135,10 +136,10 @@ h1{margin:0;font-family:var(--serif);font-size:36px;font-weight:600;line-height:
 /* Tagesrueckblick */
 .focus{border-left:4px solid var(--accent);margin:0 0 12px}
 .focus small{display:block;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.focus b{display:block;margin-top:2px;font-family:var(--serif);font-size:21px;font-weight:600;line-height:1.25}
+.focus b{display:block;margin-top:2px;font-family:var(--head);font-size:17px;font-weight:600;line-height:1.35}
 .rvp{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;margin:12px 0 0;background:var(--soft);box-shadow:none;color:var(--text)}
 .rvp .ri{width:38px;height:38px;border-radius:12px;background:var(--card);color:var(--accent);display:grid;place-items:center;flex:none}
-.rvp .rt{flex:1;min-width:0}.rvp .rt small{display:block;color:var(--muted);font-size:13px}
+.rvp .rt{flex:1;min-width:0}.rvp .rt small{display:block;color:var(--msoft);font-size:13px}
 .rvrow{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:18px;padding:12px 12px 12px 14px;margin:8px 0;box-shadow:var(--shadow)}
 .rvrow .rvt{flex:1;min-width:0;word-break:break-word}
 .rvb{display:flex;gap:6px;flex:none}
@@ -147,14 +148,14 @@ h1{margin:0;font-family:var(--serif);font-size:36px;font-weight:600;line-height:
 .rvdone{display:flex;gap:8px;align-items:center;padding:6px 2px;color:var(--muted);font-size:14px}
 .rvdone svg{color:var(--green);flex:none}
 .mood{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.mood button{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:12px 0;font-size:18px;font-family:var(--serif);font-weight:600;box-shadow:var(--shadow)}
+.mood button{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:12px 0;font-size:16px;font-family:var(--head);font-weight:600;box-shadow:var(--shadow)}
 .mood button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .moodl{text-align:center;color:var(--muted);font-size:13px;margin-top:6px;min-height:20px}
 .ta{display:block;width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;resize:none;line-height:1.45;box-shadow:var(--shadow)}
 .ta:focus{border-color:var(--accent);outline:none}
 .hrow{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:13px 14px;margin:8px 0}
 .hrow .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.hrow .hd b{font-family:var(--serif);font-size:19px;font-weight:600}
+.hrow .hd b{font-family:var(--head);font-size:16px;font-weight:600}
 .hrow p{margin:4px 0 0;font-size:14px;word-break:break-word}
 .hrow p span{color:var(--muted)}
 .hrow .x{border:0;background:none;color:var(--muted);padding:2px}
@@ -205,7 +206,7 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 /* Projekte und Teilschritte */
 .pcard{display:block;width:100%;text-align:left;border:0;margin:10px 0;color:var(--text)}
 .phd{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
-.phd b{font-family:var(--serif);font-size:21px;font-weight:600;line-height:1.2;word-break:break-word;font-variant-numeric:lining-nums}
+.phd b{font-family:var(--head);font-size:17px;font-weight:600;line-height:1.35;word-break:break-word;font-variant-numeric:lining-nums}
 .pcard .prog{background:var(--line);margin-top:10px}
 .pnext{margin-top:8px;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pnote{margin:12px 0 0;font-size:14px;white-space:pre-wrap;word-break:break-word}
@@ -268,27 +269,26 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 #perm{border:0;background:none;color:var(--accent);font-size:14px;padding:6px 0;display:inline-flex;gap:6px;align-items:center}
 
 /* Tab-Leiste und Plus-Knopf */
-#bar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(80,60,30,.06);padding:0 max(4px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(4px,env(safe-area-inset-left,0px))}
-#bar button{flex:1;min-width:0;border:0;background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 7px;font-size:10.5px;letter-spacing:.01em;position:relative}
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(35,38,57,.06);padding:0 max(4px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(4px,env(safe-area-inset-left,0px))}
+#bar button{flex:1;min-width:0;border:0;background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 7px;font-size:10px;letter-spacing:0;position:relative}
 #bar button.on{color:var(--accent);font-weight:600}
 #bar .dot{position:absolute;top:7px;left:calc(50% + 7px);width:9px;height:9px;border-radius:50%;background:var(--red);border:2px solid var(--card)}
-#fab{position:fixed;z-index:25;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;box-shadow:0 10px 26px rgba(80,60,30,.3)}
+#fab{position:fixed;z-index:25;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;box-shadow:0 10px 26px rgba(35,38,57,.3)}
 #fab:active{transform:scale(.95)}
 
 /* Rueckgaengig */
-#toast{position:fixed;z-index:40;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(150px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--text);color:var(--bg);border-radius:14px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-#toast button{border:0;background:none;color:var(--accent);font-weight:600;padding:2px 4px}
-:root:not([data-theme="dark"]) #toast button{color:#e3c98f}
+#toast{position:fixed;z-index:40;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(150px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--toast-bg);color:var(--toast-fg);border-radius:14px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+#toast button{border:0;background:none;color:var(--toast-act);font-weight:600;padding:2px 4px}
 
 /* Sheet */
 #sheet{position:fixed;inset:0;z-index:50}
-#sheet .bd{position:absolute;inset:0;background:rgba(30,24,16,.4)}
+#sheet .bd{position:absolute;inset:0;background:rgba(23,24,41,.45)}
 #sheet .panel{position:absolute;left:0;right:0;bottom:0;max-height:90vh;overflow-y:auto;background:var(--card);border-radius:26px 26px 0 0;padding:10px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));animation:up .24s ease}
 @keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){#sheet .panel{animation:none}.prog i{transition:none}}
 .grab{width:42px;height:4px;border-radius:9px;background:var(--line);margin:0 auto 10px}
 .shead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.shead b{font-family:var(--serif);font-size:24px;font-weight:600}
+.shead b{font-family:var(--head);font-size:20px;font-weight:700;font-style:italic}
 .shead button{border:0;background:var(--bg);border-radius:50%;width:34px;height:34px;display:grid;place-items:center;color:var(--muted)}
 .lbl{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px;font-weight:600}
 .panel input[type=text],.panel input[type=date],.panel input[type=time],.panel select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0}
@@ -353,7 +353,7 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
       <div class="lbl">Zutaten</div>
       <p class="hint" style="margin:0 0 6px">„Kaufen“ heißt: unbedingt besorgen. „Vorrat“ heißt: hast du wahrscheinlich zu Hause.</p>
       <div id="r-ings"></div>
-      <input id="r-iname" type="text" placeholder="Zutat suchen oder eintippen, z. B. Tomate" aria-label="Zutat" style="margin-top:10px" enterkeyhint="done">
+      <input id="r-iname" type="text" placeholder="Zutat suchen oder tippen, z. B. Tomate" aria-label="Zutat" style="margin-top:10px" enterkeyhint="done">
       <div class="sug" id="r-sug"></div>
       <div class="two3"><input id="r-iq" type="number" step="any" inputmode="decimal" placeholder="Menge" aria-label="Menge"><select id="r-iu" aria-label="Einheit"></select><button type="button" class="btn main" id="r-iadd" data-radd="1">Hinzufügen</button></div>
       <div class="lbl">Zubereitung (optional)</div>
@@ -667,7 +667,7 @@ function parseQuick(text,nowD){
 }
 let quickText='',quickProj='';
 function quickBar(){
-  return `<form class="qadd" id="qform" autocomplete="off"><input id="qtext" type="text" placeholder="Schnell hinzufügen: morgen 14 Uhr Zahnarzt" aria-label="Schnell hinzufügen" enterkeyhint="done"><button aria-label="Hinzufügen">${ic('plus',22,2.2)}</button></form><div class="qprev" id="qprev" aria-live="polite"></div>`;
+  return `<form class="qadd" id="qform" autocomplete="off"><input id="qtext" type="text" placeholder="z. B. morgen 14 Uhr Zahnarzt" aria-label="Schnell hinzufügen" enterkeyhint="done"><button aria-label="Hinzufügen">${ic('plus',22,2.2)}</button></form><div class="qprev" id="qprev" aria-live="polite"></div>`;
 }
 function quickChips(p){
   const c=[];
