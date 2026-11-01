@@ -145,7 +145,7 @@ function readRecipeFile(text){
     const names=[...new Set(clean.map(r=>r.book).filter(Boolean))];
     recImport={recipes:clean,bookName:names[0]||'',target:''};
     const m=books.find(b=>normName(b.name)===normName(recImport.bookName));
-    recImport.target=m?String(m.id):'new';
+    recImport.target=m?String(m.id):(recImport.bookName?'new':'');
     backupMsg='';
   }catch(e){recImport=null;backupMsg='Diese Datei enthält keine Rezepte, die ich lesen kann.'}
   render();
@@ -548,7 +548,7 @@ const ALL_TPL=()=>SAMPLES.concat(MORE_TPL);
 const COURSES=['Vorspeise','Hauptspeise','Beilage','Nachspeise','Backen','Frühstück','Snack'];
 const courseTxt=r=>r.course?(r.course==='Nachspeise'?'Nachspeise Dessert':r.course==='Backen'?'Backen Kuchen Gebäck':r.course):'';
 const guessCourse=n=>/salat|bruschetta/i.test(n)?'Vorspeise':/haferflocken|rührei/i.test(n)?'Frühstück':/abendbrot/i.test(n)?'Snack':'Hauptspeise';
-const CUISINES=['Deutsch','Italienisch','Asiatisch','Mediterran','Griechisch','Orientalisch','Mexikanisch','Amerikanisch','Französisch','Sonstige'];
+const CUISINES=['Deutsch','Italienisch','Asiatisch','Mediterran','Griechisch','Indisch','Österreichisch','Orientalisch','Mexikanisch','Amerikanisch','Französisch','Sonstige'];
 const guessCuisine=n=>/spaghetti|lasagne|carbonara|pesto|bruschetta|penne/i.test(n)?'Italienisch':/curry/i.test(n)?'Asiatisch':/chili|wrap/i.test(n)?'Mexikanisch':/griech/i.test(n)?'Griechisch':/burger/i.test(n)?'Amerikanisch':/quiche/i.test(n)?'Französisch':/suppe|kartoffel|schnitzel|fischst|rahm|pfannkuchen|abendbrot|rührei|haferflocken|nudelsalat|gemüsepfanne/i.test(n)?'Deutsch':'';
 const mkRecipe=([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),course:guessCourse(name),bid:null,page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})});
 let tplSel=new Set();
