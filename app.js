@@ -174,7 +174,7 @@ function foodStep(){
   const pend=meals.filter(m=>m.date>=mon&&m.date<=end&&m.date>=t&&m.rid&&!m.listed&&recOf(m.rid));
   const wk=off?'die nächste Woche':'diese Woche';
   if(!upcoming.length)return{id:'step-plan',cls:'next',prio:100,icon:'plate',title:off?'Plane die nächste Woche':'Plane deine Woche',text:'Lege fest, was es zu essen gibt. Die Einkaufsliste entsteht daraus.',
-    acts:[{l:'Woche planen',run:()=>{mealStart=off?monOf(off):null;go('meals')}}].concat(recipes.length?[{l:'Vorschlag machen',run:()=>{mealStart=off?monOf(off):null;suggestWeek()}}]:[{l:'Rezepte wählen',run:()=>{recCol='own';go('rcol');openSheet('tpl')}}])};
+    acts:[{l:'Woche planen',run:()=>{mealStart=off?monOf(off):null;go('meals')}}].concat(recipes.length?[{l:'Vorschlag machen',run:()=>{mealStart=off?monOf(off):null;go('meals');openSuggest()}}]:[{l:'Rezepte wählen',run:()=>{recCol='own';go('rcol');openSheet('tpl')}}])};
   if(pend.length)return{id:'step-tolist',cls:'next',prio:100,icon:'cart',title:pend.length+' '+(pend.length===1?'Gericht':'Gerichte')+' noch nicht auf der Einkaufsliste',text:'Übernimm die Zutaten für '+wk+'. Gleiche Zutaten werden zusammengerechnet.',
     acts:[{l:'Zutaten übernehmen',run:()=>{mealStart=off?monOf(off):null;mealsToShop()}}]};
   if(pan.length)return{id:'step-pantry',cls:'next',prio:100,icon:'home',title:'Vorrat prüfen',text:pan.length+' '+(pan.length===1?'Zutat hast':'Zutaten hast')+' du wahrscheinlich zu Hause. Schau kurz nach, bevor du einkaufst.',
@@ -416,20 +416,43 @@ function makeSamples(){
   return SAMPLES.map(([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),bid:null,page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})}));
 }
 function recOf(id){return recipes.find(r=>r.id===id)}
-function suggestWeek(){
+function sugEmpty(){
   const t=today(),mon=mealFrom(),days=[...Array(7)].map((_,i)=>addDays(mon,i)).filter(d=>d>=t);
   const wm=meals.filter(m=>m.date>=mon&&m.date<=addDays(mon,6));
-  const empty=days.filter(d=>!wm.some(m=>m.date===d&&m.slot==='A'));
+  return days.filter(d=>!wm.some(m=>m.date===d&&m.slot==='A'));
+}
+let sugN=1,sugCu=new Set();
+function openSuggest(){
+  if(!recipes.length){toast('Lege zuerst Rezepte an, dann kann ich etwas vorschlagen.',true);return}
+  if(!sugEmpty().length){toast('Alle Abende sind schon geplant.',true);return}
+  sugN=sugEmpty().length;sugCu=new Set();openSheet('sug');
+}
+function renderSug(){
+  const max=sugEmpty().length,cus=[...new Set(recipes.map(r=>r.cuisine).filter(Boolean))];
+  sugN=Math.max(1,Math.min(max,sugN));
+  const pool=recipes.filter(r=>!sugCu.size||sugCu.has(r.cuisine));
+  let h=`<div class="lbl" style="margin-top:4px">Wie viele Abendessen?</div><div class="stepper" style="margin:0"><button type="button" data-sugn="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${sugN} ${sugN===1?'Vorschlag':'Vorschläge'}</b><button type="button" data-sugn="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div><p class="hint" style="text-align:center;margin:4px 0 0">${max} ${max===1?'Abend ist':'Abende sind'} noch frei</p>`;
+  if(cus.length)h+=`<div class="lbl">Besondere Vorlieben (optional)</div><div class="mpick" style="margin-top:0">${cus.map(c=>`<button type="button" class="chip ${sugCu.has(c)?'on':''}" data-sugcu="${esc(c)}">${esc(c)}</button>`).join('')}</div><p class="hint" style="margin:8px 0 0">${sugCu.size?pool.length+' passende '+(pool.length===1?'Rezept':'Rezepte'):'Nichts gewählt: Ich wähle zufällig aus allen Rezepten.'}</p>`;
+  else h+=`<p class="hint" style="margin-top:12px">Ich wähle zufällig aus deinen Rezepten. Mit einer Küche pro Rezept kannst du Vorlieben wählen.</p>`;
+  h+=`<div class="acts"><button type="submit" class="ok">${ic('plate',18,2)} Vorschlagen</button></div>`;
+  $('sug-body').innerHTML=h;
+}
+function suggestWeek(n,cus){
+  const empty=sugEmpty();
   if(!recipes.length||!empty.length){toast('Es gibt nichts zu füllen.',true);return}
+  const wm=meals.filter(m=>m.date>=mealFrom()&&m.date<=addDays(mealFrom(),6));
   const used=new Set(wm.filter(m=>m.rid).map(m=>m.rid));
-  const pool=recipes.filter(r=>!used.has(r.id)).sort(()=>Math.random()-.5);
-  snap.last=snap();let last=null,n=0;
-  empty.forEach(d=>{
+  const base=cus&&cus.size?recipes.filter(r=>cus.has(r.cuisine)):recipes;
+  if(!base.length){toast('Dazu gibt es noch keine Rezepte.',true);return}
+  const shuffle=a=>a.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+  const pool=shuffle(base.filter(r=>!used.has(r.id))),spare=shuffle(base);
+  snap.last=snap();let last=null,cnt=0;
+  empty.slice(0,n||empty.length).forEach(d=>{
     let r=pool.shift();
-    if(!r){const alt=recipes.filter(x=>x.id!==last);r=alt[Math.floor(Math.random()*alt.length)]||recipes[0]}
-    last=r.id;meals.push({id:uid(),date:d,slot:'A',rid:r.id,title:r.name,portions:r.portions||2,listed:false});n++;
+    if(!r){r=spare.find(x=>x.id!==last)||spare[0]}
+    last=r.id;meals.push({id:uid(),date:d,slot:'A',rid:r.id,title:r.name,portions:r.portions||2,listed:false});cnt++;
   });
-  saveM();render();toast(n+' '+(n===1?'Abendessen':'Abendessen')+' vorgeschlagen. Tippe ein Gericht an, um es zu ändern.');
+  saveM();render();toast(cnt+' '+(cnt===1?'Abendessen':'Abendessen')+' vorgeschlagen. Tippe ein Gericht an, um es zu ändern.');
 }
 const ALL_TPL=()=>SAMPLES.concat(MORE_TPL);
 const CUISINES=['Deutsch','Italienisch','Asiatisch','Griechisch','Orientalisch','Mexikanisch','Amerikanisch','Französisch','Sonstige'];
@@ -592,6 +615,7 @@ $('b-file').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
   try{sheetCover=await coverFromFile(f);renderCover()}catch(err){toast('Das Bild konnte nicht geladen werden.',true)}
 });
+$('sugform').addEventListener('submit',e=>{e.preventDefault();const n=sugN,c=new Set(sugCu);closeSheet();suggestWeek(n,c)});
 $('bform').addEventListener('submit',e=>{
   e.preventDefault();
   const name=$('b-name').value.trim();if(!name)return;
@@ -601,8 +625,10 @@ $('bform').addEventListener('submit',e=>{
 });
 function openSheet(mode,id,pre){
   sheet={mode,id:id||null};
-  $('tplform').hidden=mode!=='tpl';$('mform').hidden=mode!=='meal';$('rform').hidden=mode!=='recipe';$('bform').hidden=mode!=='book';
-  if(mode==='tpl'){
+  $('tplform').hidden=mode!=='tpl';$('mform').hidden=mode!=='meal';$('rform').hidden=mode!=='recipe';$('bform').hidden=mode!=='book';$('sugform').hidden=mode!=='sug';
+  if(mode==='sug'){
+    $('sh-title').textContent='Abendessen vorschlagen';renderSug();
+  }else if(mode==='tpl'){
     $('sh-title').textContent='Rezeptvorlagen';tplSel=new Set();renderTpl();
   }else if(mode==='meal'){
     const x=id?meals.find(q=>q.id==id):null;
@@ -684,6 +710,8 @@ document.addEventListener('click',e=>{
   if(D.radd){addIngFromInputs();return}
   if(D.tpl!==undefined){if(tplSel.has(D.tpl))tplSel.delete(D.tpl);else tplSel.add(D.tpl);renderTpl();return}
   if(D.tplall){const have=new Set(recipes.map(r=>r.name)),l=ALL_TPL().filter(t=>!have.has(t[0]));tplSel=tplSel.size>=l.length?new Set():new Set(l.map(t=>t[0]));renderTpl();return}
+  if(D.sugn){sugN+=+D.sugn;renderSug();return}
+  if(D.sugcu){sugCu.has(D.sugcu)?sugCu.delete(D.sugcu):sugCu.add(D.sugcu);renderSug();return}
   if(D.mf){const[k,v]=D.mf.split('|');mealF[k]=v;renderMealPick();return}
   if(D.mrec){const r=recOf(+D.mrec);if(r){mealSel={rid:r.id,title:r.name,portions:r.portions||2};$('m-q').value=r.name;renderMealPick()}return}
   if(D.mfree){mealSel={rid:null,title:$('m-q').value.trim(),portions:null};renderMealPick();return}
@@ -717,7 +745,7 @@ document.addEventListener('click',e=>{
   else if(D.mtoshop){mealsToShop();return}
   else if(D.mcopy){const mon=mealFrom(),pv=meals.filter(m=>m.date>=addDays(mon,-7)&&m.date<mon);snap.last=snap();pv.forEach(m=>meals.push(Object.assign({},m,{id:uid(),date:addDays(m.date,7),listed:false})));saveM();render();toast('Vorwoche übernommen: '+pv.length+' '+(pv.length===1?'Gericht':'Gerichte'));return}
   else if(D.mgo){focusMeal(D.mgo);go('meals');return}
-  else if(D.msuggest){suggestWeek();return}
+  else if(D.msuggest){openSuggest();return}
   else if(D.tplopen){openSheet('tpl');return}
   else if(D.ropen){recId=+D.ropen;{const rr=recOf(recId);if(rr)recCol=rr.bid?String(rr.bid):'own'}recPort=0;view='recipe';window.scrollTo(0,0)}
   else if(D.rport){recPort=Math.max(1,Math.min(50,recPort+(+D.rport)))}
