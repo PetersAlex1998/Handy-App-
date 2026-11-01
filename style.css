@@ -208,3 +208,18 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 .acts button{flex:1;border-radius:14px;padding:13px;border:1px solid var(--line);background:var(--bg)}
 .acts .ok{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600;flex:2}
 .acts .del{color:var(--red)}
+
+/* Kochbuch, Filter, Kochansicht */
+.frow{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+.frow::-webkit-scrollbar{display:none}
+.mc{display:flex;gap:6px;align-items:stretch}
+.mc .mchip{flex:1;min-width:0}
+.mcook{border:1px solid var(--line);background:var(--soft);color:var(--text);border-radius:14px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;flex:none}
+.srcbox{display:flex;gap:12px;align-items:center;margin-top:12px}
+.srcbox small{display:block;color:var(--muted)}
+.crow{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:12px 2px;color:var(--text);font-size:17px}
+.crow .rn{flex:1;min-width:0;word-break:break-word}
+.crow .ra{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.crow .cb{width:26px;height:26px;border-radius:50%;border:2px solid var(--muted);flex:none;display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--muted)}
+.crow.done .cb{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.crow.done .rn,.crow.done .ra{opacity:.45;text-decoration:line-through}

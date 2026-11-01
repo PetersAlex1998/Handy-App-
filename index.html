@@ -45,6 +45,11 @@
     </form>
 <form id="rform" autocomplete="off" hidden>
       <input id="r-name" type="text" placeholder="Rezeptname, z. B. Tomatensuppe" required>
+      <div class="lbl">Küche</div>
+      <select id="r-cuisine" aria-label="Küche"></select>
+      <div class="lbl">Aus einem Kochbuch? (optional)</div>
+      <div class="two"><input id="r-book" type="text" list="r-booklist" placeholder="Kochbuch" aria-label="Kochbuch" autocomplete="off"><input id="r-page" type="text" inputmode="numeric" placeholder="Seite" aria-label="Seite" autocomplete="off"></div>
+      <datalist id="r-booklist"></datalist>
       <div class="lbl">Portionen</div>
       <input id="r-port" type="number" min="1" max="50" inputmode="numeric" value="2" aria-label="Portionen">
       <div class="lbl">Zutaten</div>

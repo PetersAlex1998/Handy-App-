@@ -121,9 +121,10 @@ function applyImport(){
 /* ---------- Navigation und Darstellung ---------- */
 let view='home';
 const TABS=[['home','Start','sun'],['meals','Essen','plate'],['shop','Einkauf','cart'],['more','Mehr','more']];
-const GROUPS={home:'home',meals:'meals',recipe:'meals',shop:'shop'};
+const GROUPS={home:'home',meals:'meals',recipe:'meals',cook:'meals',shop:'shop'};
 const group=v=>GROUPS[v]||'more';
 let wl=null;
+const needLock=()=>view==='cook'||(view==='shop'&&shopMode==='store');
 async function wakeLock(on){try{if(on&&'wakeLock' in navigator&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}else if(!on&&wl){await wl.release();wl=null}}catch(e){wl=null}}
 function setTop(title,sub,o={}){
   $('crumb').innerHTML=o.back?`<button class="back" data-back="1">${ic('chevL',18,2)}${o.back}</button>`:'';
@@ -140,9 +141,9 @@ function fabInfo(){
 }
 function render(){
   $('view').className='wrap'+(view==='shop'&&shopMode==='store'?' store':'');
-  wakeLock(view==='shop'&&shopMode==='store');
+  wakeLock(needLock());
   const f=fabInfo();$('fab').hidden=!f;if(f){$('fab').innerHTML=ic('plus',28,2.2);$('fab').setAttribute('aria-label',f[1])}
-  ({home:renderHome,meals:renderMeals,recipe:renderRecipe,shop:renderShop,more:renderMore})[view]();
+  ({home:renderHome,meals:renderMeals,recipe:renderRecipe,cook:renderCook,shop:renderShop,more:renderMore})[view]();
   renderBar();
 }
 function go(v){view=v;window.scrollTo(0,0);render()}
@@ -265,14 +266,23 @@ function mealsToShop(){
 }
 function mealChip(m){
   const r=m.rid?recOf(m.rid):null;
-  return `<button class="mchip" data-medit="${m.id}"><span>${esc(m.title)}</span><small>${r&&m.portions?m.portions+' Port.':''}${m.listed?' '+ic('cart',13,2):''}</small></button>`;
+  const chip=`<button class="mchip" data-medit="${m.id}"><span>${esc(m.title)}</span><small>${r&&m.portions?m.portions+' Port.':''}${m.listed?' '+ic('cart',13,2):''}</small></button>`;
+  return r?`<div class="mc">${chip}<button class="mcook" data-cook="${r.id}|${m.portions||r.portions}" aria-label="Kochen: ${esc(m.title)}">${ic('plate',18,2)}<span>Kochen</span></button></div>`:chip;
 }
+const recF={cu:'',bk:''};
+function srcLine(r){const b=r.book?('📖 '+esc(r.book)+(r.page?', S. '+esc(r.page):'')):'';return [r.cuisine?esc(r.cuisine):'',b].filter(Boolean).join(' · ')}
 function renderRecipes(segH){
   setTop('Rezepte',recipes.length+' '+(recipes.length===1?'Rezept':'Rezepte'));
   let h=segH;
   h+=`<button class="btn" data-tplopen="1" style="margin-top:4px">${ic('book',18,2)} Rezeptvorlagen auswählen</button>`;
+  const cus=[...new Set(recipes.map(r=>r.cuisine).filter(Boolean))],bks=[...new Set(recipes.map(r=>r.book).filter(Boolean))];
+  if(!cus.includes(recF.cu))recF.cu='';if(!bks.includes(recF.bk))recF.bk='';
+  const fr=(k,l,v)=>`<button class="chip ${recF[k]===v?'on':''}" data-rf="${k}|${esc(v)}">${esc(l)}</button>`;
+  if(cus.length)h+=`<div class="lbl">Küche</div><div class="frow">${fr('cu','Alle','')}${cus.map(c=>fr('cu',c,c)).join('')}</div>`;
+  if(bks.length)h+=`<div class="lbl">Kochbuch</div><div class="frow">${fr('bk','Alle','')}${bks.map(c=>fr('bk',c,c)).join('')}</div>`;
+  const shown=recipes.filter(r=>(!recF.cu||r.cuisine===recF.cu)&&(!recF.bk||r.book===recF.bk));
   if(!recipes.length)h+=`<div class="empty"><b>Noch keine Rezepte</b>Wähle Vorlagen aus oder lege ein eigenes Rezept an. Daraus entstehen Wochenplan und Einkaufsliste.</div><button class="btn" data-rsample="1">6 Beispielrezepte laden</button>`;
-  else h+=recipes.map(r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard" data-ropen="${r.id}"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div><div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></button>`}).join('');
+  else h+=(shown.length?shown:[]).map(r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard" data-ropen="${r.id}"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div>${srcLine(r)?`<div class="meta" style="margin-top:2px">${srcLine(r)}</div>`:''}<div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></button>`}).join('');
   $('view').innerHTML=h;
 }
 function renderMeals(){
@@ -306,7 +316,7 @@ function renderMeals(){
 }
 function renderMealPick(){
   const raw=$('m-q').value.trim(),q=raw.toLowerCase();
-  const l=recipes.filter(r=>!q||r.name.toLowerCase().includes(q)).slice(0,10);
+  const l=recipes.filter(r=>!q||(r.name+' '+(r.book||'')+' '+(r.cuisine||'')).toLowerCase().includes(q)).slice(0,10);
   let h='';
   if(!recipes.length)h+=`<p class="hint" style="margin-top:8px">Noch keine Rezepte vorhanden. Tippe oben ein Gericht ein oder lege Rezepte unter „Essen › Rezepte“ an.</p>`;
   else h+=`<div class="mpick">${l.map(r=>`<button type="button" class="chip ${mealSel.rid===r.id?'on':''}" data-mrec="${r.id}">${esc(r.name)}</button>`).join('')}</div>`;
@@ -392,7 +402,7 @@ function recipeToShop(r,portions){
   toast(`„${r.name}“ auf der Liste: ${res.n} neu${res.m?', '+res.m+' zusammengefasst':''}`);
 }
 function makeSamples(){
-  return SAMPLES.map(([name,portions,ings])=>({id:uid(),name,portions,note:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})}));
+  return SAMPLES.map(([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),book:'',page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})}));
 }
 function recOf(id){return recipes.find(r=>r.id===id)}
 function suggestWeek(){
@@ -411,7 +421,9 @@ function suggestWeek(){
   saveM();render();toast(n+' '+(n===1?'Abendessen':'Abendessen')+' vorgeschlagen. Tippe ein Gericht an, um es zu ändern.');
 }
 const ALL_TPL=()=>SAMPLES.concat(MORE_TPL);
-const mkRecipe=([name,portions,ings])=>({id:uid(),name,portions,note:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})});
+const CUISINES=['Deutsch','Italienisch','Asiatisch','Griechisch','Orientalisch','Mexikanisch','Amerikanisch','Französisch','Sonstige'];
+const guessCuisine=n=>/spaghetti|lasagne|carbonara|pesto|bruschetta|penne/i.test(n)?'Italienisch':/curry/i.test(n)?'Asiatisch':/chili|wrap/i.test(n)?'Mexikanisch':/griech/i.test(n)?'Griechisch':/burger/i.test(n)?'Amerikanisch':/quiche/i.test(n)?'Französisch':/suppe|kartoffel|schnitzel|fischst|rahm|pfannkuchen|abendbrot|rührei|haferflocken|nudelsalat|gemüsepfanne/i.test(n)?'Deutsch':'';
+const mkRecipe=([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),book:'',page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})});
 let tplSel=new Set();
 function renderTpl(){
   const have=new Set(recipes.map(r=>r.name)),l=ALL_TPL().filter(t=>!have.has(t[0]));
@@ -462,14 +474,33 @@ function renderRecipe(){
   if(!r){view='meals';mealSeg='recipes';return renderMeals()}
   if(!recPort)recPort=r.portions||2;
   const f=recPort/(r.portions||1);
-  setTop(r.name,r.portions+' Portionen im Rezept',{back:'Rezepte'});
+  setTop(r.name,r.portions+' Portionen im Rezept'+(r.cuisine?' · '+r.cuisine:''),{back:'Rezepte'});
   const must=r.ings.filter(i=>!i.p),pan=r.ings.filter(i=>i.p);
   const row=i=>`<div class="rrow"><span class="rn">${esc(i.name)}</span><span class="ra">${i.q!=null?esc(fmtAmt(Math.round(i.q*f*100)/100,i.u)):'nach Bedarf'}</span></div>`;
   let h=`<div class="card"><div class="meta" style="justify-content:center">Für wie viele Portionen?</div><div class="stepper"><button data-rport="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${recPort} ${recPort===1?'Portion':'Portionen'}</b><button data-rport="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div></div>`;
-  h+=`<button class="btn main" data-rtoshop="1" style="margin-top:12px">${ic('cart',18,2)} Zutaten auf die Einkaufsliste</button>`;
+  if(r.book)h+=`<div class="card srcbox">${ic('book',18,2)}<div><b>${esc(r.book)}</b><small>${r.page?'Seite '+esc(r.page):'Seite nicht angegeben'}</small></div></div>`;
+  h+=`<button class="btn main" data-cook="${r.id}|${recPort}" style="margin-top:12px">${ic('plate',18,2)} Jetzt kochen</button>`;
+  h+=`<button class="btn" data-rtoshop="1" style="margin-top:12px">${ic('cart',18,2)} Zutaten auf die Einkaufsliste</button>`;
   h+=`<div class="sec"><h2>Unbedingt kaufen</h2><span class="meta">${must.length}</span></div>`+(must.length?must.map(row).join(''):`<div class="empty" style="padding:12px">Keine Zutat markiert.</div>`);
   if(pan.length)h+=`<div class="sec"><h2>Wahrscheinlich vorrätig</h2><span class="meta">${pan.length}</span></div>`+pan.map(row).join('');
   if(r.note)h+=`<div class="sec"><h2>Zubereitung</h2></div><div class="card"><p class="pnote" style="margin:0">${esc(r.note)}</p></div>`;
+  h+=`<button class="btn" data-redit="${r.id}" style="margin-top:18px">Rezept bearbeiten</button>`;
+  $('view').innerHTML=h;
+}
+let cookId=null,cookPort=2,cookFrom='recipe',cookDone=new Set();
+function renderCook(){
+  const r=recOf(cookId);
+  if(!r){view='meals';mealSeg='recipes';return renderMeals()}
+  const f=cookPort/(r.portions||1);
+  setTop(r.name,cookPort+' '+(cookPort===1?'Portion':'Portionen')+(r.cuisine?' · '+r.cuisine:''),{back:cookFrom==='meals'?'Essensplan':'Rezept'});
+  const ck=k=>cookDone.has(k);
+  let h='';
+  if(r.book)h+=`<div class="card srcbox">${ic('book',18,2)}<div><b>${esc(r.book)}</b><small>${r.page?'Seite '+esc(r.page):'Seite nicht angegeben'}${r.note?'':' · Zubereitung steht im Kochbuch'}</small></div></div>`;
+  h+=`<div class="sec"><h2>Zutaten</h2><span class="meta">${r.ings.filter(i=>ck('i'+i.id)).length}/${r.ings.length}</span></div>`;
+  h+=r.ings.map(i=>`<button class="crow ${ck('i'+i.id)?'done':''}" data-cdone="i${i.id}"><span class="cb">${ck('i'+i.id)?ic('check',14,3):''}</span><span class="rn">${esc(i.name)}</span><span class="ra">${i.q!=null?esc(fmtAmt(Math.round(i.q*f*100)/100,i.u)):'nach Bedarf'}</span></button>`).join('');
+  const steps=(r.note||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  if(steps.length){h+=`<div class="sec"><h2>Zubereitung</h2></div>`+steps.map((t,k)=>`<button class="crow step ${ck('s'+k)?'done':''}" data-cdone="s${k}"><span class="cb">${ck('s'+k)?ic('check',14,3):k+1}</span><span class="rn">${esc(t)}</span></button>`).join('')}
+  else if(!r.book)h+=`<div class="empty" style="padding:12px">Noch keine Zubereitung hinterlegt. Du kannst sie beim Bearbeiten des Rezepts eintragen.</div>`;
   h+=`<button class="btn" data-redit="${r.id}" style="margin-top:18px">Rezept bearbeiten</button>`;
   $('view').innerHTML=h;
 }
@@ -522,6 +553,9 @@ function openSheet(mode,id,pre){
     const x=id?recipes.find(q=>q.id==id):null;
     $('sh-title').textContent=x?'Rezept bearbeiten':'Neues Rezept';
     $('r-name').value=x?x.name:'';$('r-port').value=x?x.portions:2;$('r-note').value=x?x.note||'':'';
+    $('r-cuisine').innerHTML='<option value="">Keine Angabe</option>'+CUISINES.map(c=>`<option>${c}</option>`).join('');$('r-cuisine').value=x?x.cuisine||'':'';
+    $('r-book').value=x?x.book||'':'';$('r-page').value=x?x.page||'':'';
+    $('r-booklist').innerHTML=[...new Set(recipes.map(r=>r.book).filter(Boolean))].map(b=>`<option value="${esc(b)}">`).join('');
     $('r-iu').innerHTML='<option value="">Einheit</option>'+UNITS.map(u=>`<option>${u}</option>`).join('');
     $('r-iname').value='';$('r-iq').value='';
     sheetIngs=x?x.ings.map(i=>({...i})):[];renderIngs();updateIngSug();
@@ -558,7 +592,7 @@ $('rform').addEventListener('submit',e=>{
   e.preventDefault();
   const name=$('r-name').value.trim();if(!name)return;
   addIngFromInputs();
-  const r={name,portions:Math.max(1,Math.min(50,parseInt($('r-port').value,10)||2)),note:$('r-note').value.trim(),ings:sheetIngs.map(i=>({...i}))};
+  const r={name,portions:Math.max(1,Math.min(50,parseInt($('r-port').value,10)||2)),note:$('r-note').value.trim(),cuisine:$('r-cuisine').value,book:$('r-book').value.trim(),page:$('r-page').value.trim(),ings:sheetIngs.map(i=>({...i}))};
   if(sheet.id){const x=recipes.find(q=>q.id==sheet.id);if(x)Object.assign(x,r);recPort=0}
   else{const n=Object.assign({id:uid()},r);recipes.push(n);recId=n.id;recPort=0;view='recipe';window.scrollTo(0,0)}
   saveX();closeSheet();render();
@@ -590,7 +624,8 @@ document.addEventListener('click',e=>{
   // Navigation
   if(D.nav){go(D.nav);return}
   if(D.go){go(D.go);return}
-  if(D.back){mealSeg='recipes';go('meals');return}
+  if(D.back){if(view==='cook'&&cookFrom==='recipe'){go('recipe');return}mealSeg=view==='cook'?'plan':'recipes';go('meals');return}
+  if(D.cook){const[i,p]=D.cook.split('|');cookId=+i;cookPort=+p||2;cookFrom=view==='meals'?'meals':'recipe';cookDone=new Set();go('cook');return}
   // Startseite
   if(D.nact){const i=D.nact.lastIndexOf('|'),id=D.nact.slice(0,i),a=(nudgeActs[id]||[])[+D.nact.slice(i+1)];if(a){if(a.done)nHide(id);a.run()}render();return}
   if(D.nx){nHide(D.nx)}
@@ -626,6 +661,8 @@ document.addEventListener('click',e=>{
   else if(D.bfile){$('bfile').click();return}
   else if(D.bapply){applyImport();return}
   else if(D.bcancel){pendingImport=null}
+  else if(D.cdone){cookDone.has(D.cdone)?cookDone.delete(D.cdone):cookDone.add(D.cdone)}
+  else if(D.rf){const[k,v]=D.rf.split('|');recF[k]=v}
   else return;
   render();
 });
@@ -648,6 +685,6 @@ document.addEventListener('input',e=>{
 });
 
 /* ---------- Start ---------- */
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)wakeLock(view==='shop'&&shopMode==='store')});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)wakeLock(needLock())});
 render();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
