@@ -11,3 +11,6 @@ Mit einem gemeinsamen Zugang (Supabase, Server Frankfurt) sehen mehrere Handys d
 
 ## Daten
 Alles liegt nur im Browser des Handys (localStorage), nichts wird gesendet. Unter „Mehr“ gibt es die Datensicherung. Frühere Daten (Aufgaben, Gewohnheiten, Notizen …) bleiben unangetastet gespeichert und sind in der Sicherung enthalten.
+
+## Hinweis
+Private Familien-App für Essensplanung. Die Daten liegen nicht in diesem Repository.
