@@ -238,11 +238,25 @@ let recCol='own';
 const bookOf=r=>r&&r.bid?books.find(b=>b.id===r.bid):null;
 function srcLine(r){const bk=bookOf(r),b=bk?('📖 '+esc(bk.name)+(r.page?', S. '+esc(r.page):'')):'';return [r.cuisine?esc(r.cuisine):'',b].filter(Boolean).join(' · ')}
 const recCount=n=>n+' '+(n===1?'Rezept':'Rezepte');
+const recCard=r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard" data-ropen="${r.id}"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div>${srcLine(r)?`<div class="meta" style="margin-top:2px">${srcLine(r)}</div>`:''}<div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></button>`};
+let recQ='';
+function updateRecSearch(){
+  const q=recQ.trim().toLowerCase(),main=$('rmain'),res=$('rres');if(!main||!res)return;
+  main.hidden=!!q;res.hidden=!q;if(!q){res.innerHTML='';return}
+  const bl=books.filter(b=>b.name.toLowerCase().includes(q));
+  const rl=recipes.filter(r=>[r.name,(bookOf(r)||{}).name||'',r.cuisine||'',r.ings.map(i=>i.name).join(' ')].join(' ').toLowerCase().includes(q));
+  const row=(act,ic_,title,sub,tag)=>`<button class="srow" ${act}><span class="si">${ic(ic_,20,1.8)}</span><span class="st"><b>${esc(title)}</b>${sub?`<small>${sub}</small>`:''}</span><span class="stag">${tag}</span></button>`;
+  const items=bl.map(b=>({n:b.name,h:row(`data-rcol="${b.id}"`,'book',b.name,recCount(recipes.filter(r=>r.bid===b.id).length),'Buch')}))
+    .concat(rl.map(r=>({n:r.name,h:row(`data-ropen="${r.id}"`,'plate',r.name,srcLine(r),'Rezept')})))
+    .sort((a,b)=>a.n.toLowerCase().startsWith(q)===b.n.toLowerCase().startsWith(q)?a.n.localeCompare(b.n,'de'):a.n.toLowerCase().startsWith(q)?-1:1);
+  let h=items.length?`<div class="slist">${items.map(x=>x.h).join('')}</div>`:`<div class="empty"><b>Nichts gefunden</b>Versuche einen anderen Suchbegriff.</div>`;
+  res.innerHTML=h;
+}
 function renderRecipes(){
   setTop('Rezepte',recCount(recipes.length));
   const own=recipes.filter(r=>!bookOf(r));
   const tile=(act,inner,cls='')=>`<button class="mod ${cls}" ${act}>${inner}</button>`;
-  let h=`<div class="mods">`;
+  let h=`<div class="sform"><input id="rsearch" type="search" value="${esc(recQ)}" placeholder="Kochbuch, Rezept oder Zutat suchen" aria-label="Suchen" enterkeyhint="search" autocomplete="off"></div><div id="rmain"><div class="mods">`;
   h+=tile('data-rcol="own"',`<span class="mi">${ic('plate',30,1.8)}</span><b>Eigene Rezepte</b><small>${recCount(own.length)}</small>`,'plain');
   h+=books.map(b=>{const n=recipes.filter(r=>r.bid===b.id).length;
     return tile(`data-rcol="${b.id}"`,b.cover?`<img src="${b.cover}" alt=""><span class="mcap"><b>${esc(b.name)}</b><small>${recCount(n)}</small></span>`:`<span class="mi">${ic('book',30,1.8)}</span><b>${esc(b.name)}</b><small>${recCount(n)}</small>`,b.cover?'cover':'plain')}).join('');
@@ -250,7 +264,8 @@ function renderRecipes(){
   h+=`</div>`;
   const cus=[...new Set(recipes.map(r=>r.cuisine).filter(Boolean))];
   if(cus.length)h+=`<div class="sec"><h2>Nach Küche</h2></div><div class="frow">${cus.map(c=>`<button class="chip" data-rcol="cu:${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
-  $('view').innerHTML=h;
+  h+=`</div><div id="rres" hidden></div>`;
+  $('view').innerHTML=h;updateRecSearch();
 }
 function renderCollection(){
   const isCu=String(recCol).startsWith('cu:'),bk=!isCu&&recCol!=='own'?books.find(b=>b.id===+recCol):null;
@@ -264,7 +279,7 @@ function renderCollection(){
     h+=`<button class="btn" data-tplopen="1" style="margin-top:4px">${ic('book',18,2)} Rezeptvorlagen auswählen</button>`;
   }
   if(!list.length)h+=bk?`<div class="empty"><b>Noch keine Rezepte aus diesem Buch</b>Tippe oben auf den Knopf und trage ein Rezept mit Seitenzahl ein.</div>`:isCu?`<div class="empty"><b>Keine Rezepte</b></div>`:`<div class="empty"><b>Noch keine eigenen Rezepte</b>Wähle Vorlagen aus oder lege ein eigenes Rezept an. Daraus entstehen Wochenplan und Einkaufsliste.</div><button class="btn" data-rsample="1">6 Beispielrezepte laden</button>`;
-  else h+=list.map(r=>{const m=r.ings.filter(i=>!i.p).length;return `<button class="card pcard" data-ropen="${r.id}"><div class="phd"><b>${esc(r.name)}</b><span class="meta">${r.portions} Port.</span></div>${srcLine(r)?`<div class="meta" style="margin-top:2px">${srcLine(r)}</div>`:''}<div class="meta" style="margin-top:2px">${r.ings.length} Zutaten · ${m} zu kaufen · ${r.ings.length-m} wahrscheinlich vorrätig</div></button>`}).join('');
+  else h+=list.map(recCard).join('');
   if(bk)h+=`<button class="btn" data-bedit="${bk.id}" style="margin-top:18px">Kochbuch bearbeiten</button>`;
   $('view').innerHTML=h;
 }
@@ -661,7 +676,7 @@ document.addEventListener('click',e=>{
   else if(D.mgo){focusMeal(D.mgo);go('meals');return}
   else if(D.msuggest){suggestWeek();return}
   else if(D.tplopen){openSheet('tpl');return}
-  else if(D.ropen){recId=+D.ropen;recPort=0;view='recipe';window.scrollTo(0,0)}
+  else if(D.ropen){recId=+D.ropen;{const rr=recOf(recId);if(rr)recCol=rr.bid?String(rr.bid):'own'}recPort=0;view='recipe';window.scrollTo(0,0)}
   else if(D.rport){recPort=Math.max(1,Math.min(50,recPort+(+D.rport)))}
   else if(D.rtoshop){const r=recOf(recId);if(r)recipeToShop(r,recPort||r.portions);return}
   else if(D.redit){openSheet('recipe',D.redit);return}
@@ -700,6 +715,7 @@ document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='sname')updateShopSug();
   else if(t.id==='r-iname')updateIngSug();
+  else if(t.id==='rsearch'){recQ=t.value;updateRecSearch()}
   else if(t.id==='m-q')renderMealPick();
   else if(t.dataset&&t.dataset.iq!==undefined){const i=sheetIngs[+t.dataset.iq];if(i){const v=t.value.replace(',','.');i.q=v===''||isNaN(parseFloat(v))?null:parseFloat(v)}}
 });
