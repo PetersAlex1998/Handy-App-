@@ -40,7 +40,8 @@ const LEGACY={tasks:'alltag.tasks.v1',habits:'alltag.habits.v1',notes:'alltag.no
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
 const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const day=(v,def)=>Number.isInteger(v)&&v>=0&&v<=6?v:def;
-const cleanSettings=o=>({planDay:day(o&&o.planDay,6),shopDay:day(o&&o.shopDay,0)});
+const persN=v=>{v=parseInt(v,10);return Number.isFinite(v)?Math.max(1,Math.min(20,v)):2};
+const cleanSettings=o=>({planDay:day(o&&o.planDay,6),shopDay:day(o&&o.shopDay,0),persons:persN(o&&o.persons)});
 let shop=load(K.s,[]),recipes=load(K.x,[]),meals=load(K.m,[]),books=load(K.bk,[]);
 // Ältere Rezepte mit Buchname bekommen ein Kochbuch-Modul
 recipes.forEach(r=>{if(r.book&&!r.bid){let b=books.find(x=>x.name===r.book);if(!b){b={id:Date.now()+books.length,name:r.book,cover:''};books.push(b)}r.bid=b.id}delete r.book});
@@ -184,7 +185,7 @@ function foodStep(){
   return null;
 }
 /* ---------- Mehr: Wochenrhythmus, Sicherung ---------- */
-function setSetting(k,v){settings[k]=day(+v,settings[k]);saveC();render()}
+function setSetting(k,v){settings[k]=k==='persons'?persN(v):day(+v,settings[k]);saveC();render()}
 function renderMore(){
   setTop('Mehr','');
   const l=lastBackup();
@@ -192,6 +193,7 @@ function renderMore(){
   const wd=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
   const sel=k=>`<select id="set-${k}" data-set="${k}">${wd.map((n,i)=>`<option value="${i}" ${settings[k]===i?'selected':''}>${n}</option>`).join('')}</select>`;
   let h=`<div class="sec" style="margin-top:6px"><h2>Wochenrhythmus</h2></div><div class="card"><div class="setrow"><label for="set-planDay">Ich plane die nächste Woche ab</label>${sel('planDay')}</div><div class="setrow"><label for="set-shopDay">Mein Einkaufstag</label>${sel('shopDay')}</div><p class="hint" style="margin:10px 0 0">Ab dem Planungstag fragt die Startseite nach der nächsten Woche. Am Einkaufstag erinnert sie dich ans Einkaufen.</p></div>`;
+  h+=`<div class="sec"><h2>Haushalt</h2></div><div class="card"><div class="meta" style="justify-content:center">Für wie viele Personen kochst du normalerweise?</div><div class="stepper"><button data-pers="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${settings.persons} ${settings.persons===1?'Person':'Personen'}</b><button data-pers="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div><p class="hint" style="margin:6px 0 0;text-align:center">Wochenplan, Kochansicht und Einkaufsliste rechnen Rezepte automatisch auf diese Zahl um. Im Rezept selbst trägst du ein, für wie viele Personen es im Kochbuch steht.</p></div>`;
   h+=`<div class="sec"><h2>Datensicherung</h2></div><div class="card">
     <div class="bk"><span class="bki">${ic('shield',24)}</span><div><b>${backupDue()?'Zeit für eine Sicherung':'Deine Daten sind auf diesem Handy'}</b><div class="meta" style="font-size:13px;margin-top:2px">${lastTxt}. Sichere regelmäßig, damit nichts verloren geht, wenn du das Handy wechselst oder den Browser-Speicher löschst.</div></div></div>
     <button class="btn main" data-bdl="1">${ic('down',18)} Sicherung herunterladen</button>
@@ -213,6 +215,7 @@ function renderMore(){
 /* ---------- Essensplan und Rezepte (Tab "Essen") ---------- */
 const SLOTL={F:'Frühstück',M:'Mittag',A:'Abend'};
 let mealStart=null,mealSel={rid:null,title:'',portions:2};
+const persDef=()=>settings.persons||2;
 function monOf(off){const t=today();return addDays(t,-dowIdx(t)+7*off)}
 function mealFrom(){return mealStart||today()}
 function focusMeal(date){const t=today();mealStart=(date>=t&&date<=addDays(t,6))?null:date}
@@ -336,6 +339,7 @@ function renderMealPick(){
     h+=l.length?`<div class="plist">${l.map(r=>`<button type="button" class="srow ${mealSel.rid===r.id?'sel':''}" data-mrec="${r.id}">${r.img?`<img class="sthumb" src="${r.img}" alt="">`:`<span class="si">${ic('plate',20,1.8)}</span>`}<span class="st"><b>${esc(r.name)}</b>${srcLine(r)?`<small>${srcLine(r)}</small>`:''}</span>${mealSel.rid===r.id?`<span class="stag">${ic('check',18,3)}</span>`:''}</button>`).join('')}</div>`:`<p class="hint">Kein Rezept passt zu dieser Auswahl.</p>`;
   }
   if(q&&!recipes.some(r=>r.name.toLowerCase()===q))h+=`<button type="button" class="btn" data-mfree="1" style="margin-top:10px">Als eigenes Gericht: „${esc(raw)}“</button>`;
+  if(mealSel.rid&&recOf(mealSel.rid)&&recOf(mealSel.rid).portions!==mealSel.portions)h+=`<p class="hint" style="margin:10px 0 0">Im Rezept: ${recOf(mealSel.rid).portions} ${recOf(mealSel.rid).portions===1?'Portion':'Portionen'}. Die Mengen werden umgerechnet.</p>`;
   if(mealSel.rid)h+=`<div class="lbl">Portionen</div><div class="stepper" style="margin:0"><button type="button" data-mport="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${mealSel.portions} ${mealSel.portions===1?'Portion':'Portionen'}</b><button type="button" data-mport="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div>`;
   else if(mealSel.title)h+=`<p class="hint" style="margin-top:10px">Eigenes Gericht: ${esc(mealSel.title)}</p>`;
   $('m-pick').innerHTML=h;
@@ -454,7 +458,7 @@ function suggestWeek(n,cus){
   empty.slice(0,n||empty.length).forEach(d=>{
     let r=pool.shift();
     if(!r){r=spare.find(x=>x.id!==last)||spare[0]}
-    last=r.id;meals.push({id:uid(),date:d,slot:'A',rid:r.id,title:r.name,portions:r.portions||2,listed:false});cnt++;
+    last=r.id;meals.push({id:uid(),date:d,slot:'A',rid:r.id,title:r.name,portions:persDef(),listed:false});cnt++;
   });
   saveM();render();toast(cnt+' '+(cnt===1?'Abendessen':'Abendessen')+' vorgeschlagen. Tippe ein Gericht an, um es zu ändern.');
 }
@@ -513,9 +517,9 @@ function renderShop(){
 function renderRecipe(){
   const r=recOf(recId);
   if(!r){view='recipes';return renderRecipes()}
-  if(!recPort)recPort=r.portions||2;
+  if(!recPort)recPort=persDef();
   const f=recPort/(r.portions||1);
-  setTop(r.name,r.portions+' Portionen im Rezept'+(r.cuisine?' · '+r.cuisine:''),{back:'Rezepte'});
+  setTop(r.name,'Im Buch: '+r.portions+' '+(r.portions===1?'Portion':'Portionen')+(recPort!==r.portions?' · umgerechnet auf '+recPort:'')+(r.cuisine?' · '+r.cuisine:''),{back:'Rezepte'});
   const must=r.ings.filter(i=>!i.p),pan=r.ings.filter(i=>i.p);
   const row=i=>`<div class="rrow"><span class="rn">${esc(i.name)}</span><span class="ra">${i.q!=null?esc(fmtAmt(Math.round(i.q*f*100)/100,i.u)):'nach Bedarf'}</span></div>`;
   let h=(r.img?`<img class="rhero" src="${r.img}" alt="${esc(r.name)}">`:'')+`<div class="card"><div class="meta" style="justify-content:center">Für wie viele Portionen?</div><div class="stepper"><button data-rport="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${recPort} ${recPort===1?'Portion':'Portionen'}</b><button data-rport="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div></div>`;
@@ -642,7 +646,7 @@ function openSheet(mode,id,pre){
     $('sh-title').textContent=x?'Gericht bearbeiten':'Gericht planen';
     $('m-date').value=x?x.date:((pre&&pre.date)||today());
     $('m-slot').value=x?x.slot:((pre&&pre.slot)||'A');
-    mealSel=x?{rid:x.rid&&recOf(x.rid)?x.rid:null,title:x.title,portions:x.portions||2}:{rid:null,title:'',portions:2};
+    mealSel=x?{rid:x.rid&&recOf(x.rid)?x.rid:null,title:x.title,portions:x.portions||persDef()}:{rid:null,title:'',portions:persDef()};
     $('m-q').value=x&&!mealSel.rid?x.title:'';
     $('m-del').hidden=!x;renderMealPick();
   }else if(mode==='book'){
@@ -652,7 +656,7 @@ function openSheet(mode,id,pre){
   }else if(mode==='recipe'){
     const x=id?recipes.find(q=>q.id==id):null;
     $('sh-title').textContent=x?'Rezept bearbeiten':'Neues Rezept';
-    $('r-name').value=x?x.name:'';$('r-port').value=x?x.portions:2;$('r-note').value=x?x.note||'':'';sheetImg=x?x.img||'':'';renderRImg();
+    $('r-name').value=x?x.name:'';$('r-port').value=x?x.portions:persDef();$('r-note').value=x?x.note||'':'';sheetImg=x?x.img||'':'';renderRImg();
     $('r-cuisine').innerHTML='<option value="">Keine Angabe</option>'+CUISINES.map(c=>`<option>${c}</option>`).join('');$('r-cuisine').value=x?x.cuisine||'':'';
     $('r-course').innerHTML='<option value="">Keine Angabe</option>'+COURSES.map(c=>`<option>${c}</option>`).join('');$('r-course').value=x?x.course||'':'';
     $('r-book').innerHTML='<option value="">Kein Kochbuch</option>'+books.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
@@ -721,7 +725,7 @@ document.addEventListener('click',e=>{
   if(D.sugn){sugN+=+D.sugn;renderSug();return}
   if(D.sugcu){sugCu.has(D.sugcu)?sugCu.delete(D.sugcu):sugCu.add(D.sugcu);renderSug();return}
   if(D.mf){const[k,v]=D.mf.split('|');mealF[k]=v;renderMealPick();return}
-  if(D.mrec){const r=recOf(+D.mrec);if(r){mealSel={rid:r.id,title:r.name,portions:r.portions||2};$('m-q').value=r.name;renderMealPick()}return}
+  if(D.mrec){const r=recOf(+D.mrec);if(r){mealSel={rid:r.id,title:r.name,portions:persDef()};$('m-q').value=r.name;renderMealPick()}return}
   if(D.mfree){mealSel={rid:null,title:$('m-q').value.trim(),portions:null};renderMealPick();return}
   if(D.mport){mealSel.portions=Math.max(1,Math.min(50,mealSel.portions+(+D.mport)));renderMealPick();return}
   if(D.mdel){const id=+sheet.id;closeSheet();destructive('Gericht gelöscht',()=>{meals=meals.filter(q=>q.id!==id);saveM()});return}
@@ -776,6 +780,7 @@ document.addEventListener('click',e=>{
   else if(D.bfile){$('bfile').click();return}
   else if(D.bapply){applyImport();return}
   else if(D.bcancel){pendingImport=null}
+  else if(D.pers){setSetting('persons',settings.persons+(+D.pers));return}
   else if(D.cdone){cookDone.has(D.cdone)?cookDone.delete(D.cdone):cookDone.add(D.cdone)}
   else return;
   render();
