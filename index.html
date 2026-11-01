@@ -42,13 +42,20 @@
       <div id="m-pick"></div>
       <div class="acts"><button type="button" class="del" id="m-del" data-mdel="1">Löschen</button><button type="submit" class="ok">Speichern</button></div>
     </form>
+<form id="bform" autocomplete="off" hidden>
+      <input id="b-name" type="text" placeholder="Name des Kochbuchs" required>
+      <div class="lbl">Cover</div>
+      <div id="b-prev" class="bprev"></div>
+      <div class="acts" style="margin-top:10px"><button type="button" id="b-pick" data-bpick="1">Cover-Bild wählen</button><button type="button" id="b-rm" data-brm="1">Entfernen</button></div>
+      <input type="file" id="b-file" accept="image/*" hidden>
+      <div class="acts"><button type="button" class="del" id="b-del" data-bdel="1">Löschen</button><button type="submit" class="ok">Speichern</button></div>
+    </form>
 <form id="rform" autocomplete="off" hidden>
       <input id="r-name" type="text" placeholder="Rezeptname, z. B. Tomatensuppe" required>
       <div class="lbl">Küche</div>
       <select id="r-cuisine" aria-label="Küche"></select>
       <div class="lbl">Aus einem Kochbuch? (optional)</div>
-      <div class="two"><input id="r-book" type="text" list="r-booklist" placeholder="Kochbuch" aria-label="Kochbuch" autocomplete="off"><input id="r-page" type="text" inputmode="numeric" placeholder="Seite" aria-label="Seite" autocomplete="off"></div>
-      <datalist id="r-booklist"></datalist>
+      <div class="two"><select id="r-book" aria-label="Kochbuch"></select><input id="r-page" type="text" inputmode="numeric" placeholder="Seite" aria-label="Seite" autocomplete="off"></div>
       <div class="lbl">Portionen</div>
       <input id="r-port" type="number" min="1" max="50" inputmode="numeric" value="2" aria-label="Portionen">
       <div class="lbl">Zutaten</div>
