@@ -41,7 +41,59 @@ const LEGACY={tasks:'alltag.tasks.v1',habits:'alltag.habits.v1',notes:'alltag.no
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
 // Speichern: schlägt es fehl (Speicher voll), merkt sich die App das und warnt, statt still zu verlieren
 let storeFail=false;const failedKeys=new Set();
-const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));failedKeys.delete(k);storeFail=failedKeys.size>0;return true}catch(e){failedKeys.add(k);storeFail=true;return false}};
+
+/* Fotos und Cover liegen im großen Browser-Speicher (IndexedDB), nur ein Platzhalter bleibt im kleinen Speicher.
+   Erst wenn ein Bild sicher in der Datenbank liegt, wird es aus dem kleinen Speicher entfernt. */
+const imgDB=(()=>{
+  let db=null;
+  const open=()=>new Promise(res=>{
+    try{
+      if(!window.indexedDB)return res(false);
+      const rq=indexedDB.open('alltag-images',1);
+      rq.onupgradeneeded=()=>rq.result.createObjectStore('img');
+      rq.onsuccess=()=>{db=rq.result;res(true)};
+      rq.onerror=()=>res(false);rq.onblocked=()=>res(false);
+    }catch(e){res(false)}
+  });
+  const tx=(mode,fn)=>new Promise(res=>{
+    try{const t=db.transaction('img',mode),r=fn(t.objectStore('img'));t.oncomplete=()=>res(r&&r.result!==undefined?r.result:true);t.onerror=t.onabort=()=>res(null)}catch(e){res(null)}
+  });
+  return{open,
+    get:k=>tx('readonly',s=>s.get(k)).then(v=>v===true?null:v),
+    set:(k,v)=>tx('readwrite',s=>s.put(v,k)).then(r=>r!==null),
+    del:k=>tx('readwrite',s=>s.delete(k)),
+    keys:()=>tx('readonly',s=>s.getAllKeys()).then(r=>Array.isArray(r)?r:[])};
+})();
+let imagesReady=false,idbAvail=false,imgTimer=null;
+const imgConf=new Map(),pendKeys=new Set();
+function stripItems(a,prefix,field){
+  return a.map(it=>{
+    const k=prefix+it.id,v=it[field];
+    if(pendKeys.has(k))return Object.assign({},it,{[field]:'idb'});
+    if(v&&v.length>20&&imgConf.get(k)===v)return Object.assign({},it,{[field]:'idb'});
+    return it;
+  });
+}
+function syncImages(){clearTimeout(imgTimer);imgTimer=setTimeout(doSyncImages,60)}
+async function doSyncImages(){
+  if(!imagesReady||!idbAvail)return;
+  const want=new Map();
+  recipes.forEach(r=>{if(r.img&&r.img.startsWith('data:'))want.set('r:'+r.id,r.img)});
+  books.forEach(b=>{if(b.cover&&b.cover.startsWith('data:'))want.set('b:'+b.id,b.cover)});
+  let changed=false;
+  for(const [k,v] of want){if(imgConf.get(k)!==v&&await imgDB.set(k,v)){imgConf.set(k,v);changed=true}}
+  for(const k of await imgDB.keys()){if(!want.has(k)&&!pendKeys.has(k)){await imgDB.del(k);imgConf.delete(k)}}
+  if(changed){put(K.x,recipes);put(K.bk,books)}      // jetzt ohne die großen Bilder
+}
+const put=(k,v)=>{
+  let out=v;
+  if(k===K.x)out=stripItems(v,'r:','img');else if(k===K.bk)out=stripItems(v,'b:','cover');
+  let ok=false;
+  try{localStorage.setItem(k,JSON.stringify(out));failedKeys.delete(k);ok=true}catch(e){failedKeys.add(k)}
+  storeFail=failedKeys.size>0;
+  if(k===K.x||k===K.bk)syncImages();
+  return ok;
+};
 const usedChars=()=>{let n=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);n+=k.length+(localStorage.getItem(k)||'').length}}catch(e){}return n};
 const usedMB=()=>usedChars()*2/1048576;
 const day=(v,def)=>Number.isInteger(v)&&v>=0&&v<=6?v:def;
@@ -90,6 +142,7 @@ const hasLegacy=()=>Object.keys(legacyData()).length>0;
 function backupDue(){const n=shop.length+recipes.length+meals.length,l=lastBackup();return n>=5&&(!l||Date.now()-l>14*864e5)}
 function backupJSON(){return JSON.stringify({app:'alltag',version:3,exported:new Date().toISOString(),data:{shop,recipes,meals,books,settings,legacy:legacyData()}},null,1)}
 function downloadBackup(){
+  if(!imagesReady){toast('Die Bilder werden noch geladen. Versuche es gleich noch einmal.',true);return}
   const json=backupJSON();
   try{
     const a=document.createElement('a');
@@ -102,6 +155,7 @@ function downloadBackup(){
   render();
 }
 function copyBackup(){
+  if(!imagesReady){toast('Die Bilder werden noch geladen. Versuche es gleich noch einmal.',true);return}
   const json=backupJSON();
   const fallback=()=>{backupText=json;backupMsg='Kopieren war nicht möglich. Markiere den Text unten und kopiere ihn von Hand.';render()};
   try{navigator.clipboard.writeText(json).then(()=>{markBackup();backupText='';backupMsg='Sicherung in die Zwischenablage kopiert. Füge sie z. B. in eine Notiz oder Mail ein.';render()}).catch(fallback)}catch(e){fallback()}
@@ -254,7 +308,7 @@ function renderMore(){
   else h+=`<p class="hint" style="margin:0 0 8px">Melde dich mit eurem gemeinsamen Zugang an. Danach sehen alle Handys dieselben Daten. Ohne Anmeldung bleibt alles nur auf diesem Handy.</p><form id="syform" autocomplete="on"><input id="sy-mail" type="email" placeholder="E-Mail" autocomplete="username" aria-label="E-Mail"><input id="sy-pw" type="password" placeholder="Passwort" autocomplete="current-password" aria-label="Passwort" style="margin-top:8px"><button type="submit" class="btn main" style="margin-top:10px">Anmelden</button></form><p class="hint" id="sy-msg" style="margin:8px 0 0">${esc(Sync.err())}</p>`;
   h+=`</div>`;
   const mb=usedMB(),pct=Math.min(100,Math.round(mb/5*100));
-  h+=`<div class="sec"><h2>Speicher</h2></div><div class="card"><b>${mb.toFixed(1).replace('.',',')} MB von etwa 5 MB belegt</b><div class="bar5"><i style="width:${pct}%" class="${pct>70?'hi':''}"></i></div><p class="hint" style="margin:8px 0 0">${pct>70?'Der Speicher wird knapp. Verkleinere die Fotos, sonst kann die App bald nichts mehr speichern.':'Fotos und Cover brauchen den meisten Platz. Safari erlaubt der App nur etwa 5 MB.'}</p><button class="btn" data-shrink="1" style="margin-top:8px">Fotos verkleinern</button></div>`;
+  h+=`<div class="sec"><h2>Speicher</h2></div><div class="card"><b>${mb.toFixed(1).replace('.',',')} MB von etwa 5 MB belegt</b><div class="bar5"><i style="width:${pct}%" class="${pct>70?'hi':''}"></i></div><p class="hint" style="margin:8px 0 0">${pct>70?'Der Speicher wird knapp. Verkleinere die Fotos, sonst kann die App bald nichts mehr speichern.':'Hier zählen die Texte. Die Fotos und Cover liegen im großen Browser-Speicher und belegen diesen Platz nicht.'}</p><button class="btn" data-shrink="1" style="margin-top:8px">Fotos verkleinern</button></div>`;
   h+=`<div class="sec"><h2>Haushalt</h2></div><div class="card"><div class="meta" style="justify-content:center">Für wie viele Personen kochst du normalerweise?</div><div class="stepper"><button data-pers="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${settings.persons} ${settings.persons===1?'Person':'Personen'}</b><button data-pers="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div><p class="hint" style="margin:6px 0 0;text-align:center">Wochenplan, Kochansicht und Einkaufsliste rechnen Rezepte automatisch auf diese Zahl um. Im Rezept selbst trägst du ein, für wie viele Personen es im Kochbuch steht.</p></div>`;
   h+=`<div class="sec"><h2>Datensicherung</h2></div><div class="card">
     <div class="bk"><span class="bki">${ic('shield',24)}</span><div><b>${backupDue()?'Zeit für eine Sicherung':'Deine Daten sind auf diesem Handy'}</b><div class="meta" style="font-size:13px;margin-top:2px">${lastTxt}. Sichere regelmäßig, damit nichts verloren geht, wenn du das Handy wechselst oder den Browser-Speicher löschst.</div></div></div>
@@ -276,7 +330,7 @@ function renderMore(){
   if(backupText)h+=`<textarea id="btext" readonly aria-label="Sicherung als Text">${esc(backupText)}</textarea>`;
   h+=`</div>`;
   if(hasLegacy())h+=`<div class="sec"><h2>Ausgeblendet</h2></div><div class="card"><p class="hint" style="margin:0">Aufgaben, Gewohnheiten, Notizen, Projekte und Rückblicke sind ausgeblendet. Deine früheren Einträge bleiben erhalten und stecken in jeder Sicherung.</p></div>`;
-  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Essen und Einkauf · Version 39</p>`;
+  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Essen und Einkauf · Version 40</p>`;
   $('view').innerHTML=h;
 }
 
@@ -940,5 +994,22 @@ document.addEventListener('input',e=>{
 /* ---------- Start ---------- */
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)wakeLock(needLock())});
 render();
-Sync.start();
+async function hydrateImages(){
+  idbAvail=await imgDB.open();
+  const jobs=[];
+  recipes.forEach(r=>{if(r.img==='idb'){const k='r:'+r.id;pendKeys.add(k);r.img='';jobs.push([k,r,'img'])}});
+  books.forEach(b=>{if(b.cover==='idb'){const k='b:'+b.id;pendKeys.add(k);b.cover='';jobs.push([k,b,'cover'])}});
+  const miss=[];
+  for(const [k,it,f] of jobs){
+    const v=idbAvail?await imgDB.get(k):null;
+    if(v){it[f]=v;imgConf.set(k,v)}else miss.push(k);
+    pendKeys.delete(k);
+  }
+  imagesReady=true;
+  if(miss.length){try{Sync.markMissing(miss)}catch(e){}}
+  render();
+  doSyncImages();
+  Sync.start();
+}
+hydrateImages();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
