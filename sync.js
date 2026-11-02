@@ -8,7 +8,7 @@ const Sync=(()=>{
   const st=(()=>{try{return Object.assign({s:null,last:'1970-01-01T00:00:00Z',sh:{},at:0,err:'',mail:''},JSON.parse(localStorage.getItem(SK))||{})}catch(e){return{s:null,last:'1970-01-01T00:00:00Z',sh:{},at:0,err:'',mail:''}}})();
   COLS.forEach(c=>{if(!st.sh[c])st.sh[c]={}});
   const save=()=>{try{localStorage.setItem(SK,JSON.stringify(st))}catch(e){}};
-  let busy=false,timer=null,again=false,viewStale=false;
+  let busy=false,timer=null,again=false,viewStale=false,allow=false,guard=null;
   const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return String(h)+':'+s.length};
   const arr=c=>({shop:shop,recipes:recipes,meals:meals,books:books})[c];
   const keyOf=c=>({shop:K.s,recipes:K.x,meals:K.m,books:K.bk})[c];
@@ -70,15 +70,28 @@ const Sync=(()=>{
     });
     return up;
   }
+  const known=()=>COLS.reduce((n,c)=>n+Object.keys(st.sh[c]).length,0);
   async function push(){
-    const up=diff();
+    const all=diff(),up=all.filter(p=>!p.deleted),tomb=all.filter(p=>p.deleted);
+    // Sicherheitsstopp: viele Löschungen auf einmal sehen nach einem Fehler aus, nicht nach Absicht
+    if(tomb.length&&!allow&&tomb.length>=5&&tomb.length>=known()*0.25){
+      guard={type:'push',n:tomb.length,total:known(),ids:tomb.map(p=>[p.collection,p.id])};
+      throw new Error('guard');
+    }
     for(let i=0;i<up.length;i+=12){
       const part=up.slice(i,i+12);
-      await api('/rest/v1/items?on_conflict=collection,id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(part.map(({collection,id,data,deleted})=>({collection,id,data,deleted})))});
-      part.forEach(p=>{if(p.deleted)delete st.sh[p.collection][p.id];else st.sh[p.collection][p.id]=p._h});
+      await api('/rest/v1/items?on_conflict=collection,id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(part.map(({collection,id,data})=>({collection,id,data,deleted:false})))});
+      part.forEach(p=>{st.sh[p.collection][p.id]=p._h});
       save();
     }
-    return up.length;
+    // Löschungen: nur die Markierung setzen, der Inhalt bleibt auf dem Server erhalten
+    for(let i=0;i<tomb.length;i+=40){
+      const part=tomb.slice(i,i+40);
+      await api('/rest/v1/items?on_conflict=collection,id&columns=collection,id,deleted',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(part.map(({collection,id})=>({collection,id,deleted:true})))});
+      part.forEach(p=>{delete st.sh[p.collection][p.id]});
+      save();
+    }
+    return up.length+tomb.length;
   }
   function apply(rows){
     let changed=false;const touched=new Set();
@@ -110,16 +123,24 @@ const Sync=(()=>{
     touched.forEach(persist);
     return changed;
   }
+  const localCount=()=>COLS.reduce((n,c)=>n+(c==='settings'?0:arr(c).length),0);
   async function pull(){
     const since=new Date(Date.parse(st.last)-5000).toISOString();
-    let off=0,maxT=st.last,changed=false;
+    let off=0,maxT=st.last,all=[];
     for(;;){
       const r=await api('/rest/v1/items?select=collection,id,data,deleted,updated_at&updated_at=gt.'+encodeURIComponent(since)+'&order=updated_at.asc,collection.asc,id.asc&limit=40&offset='+off);
       const rows=await r.json();
-      if(apply(rows))changed=true;
+      all=all.concat(rows);
       rows.forEach(x=>{if(x.updated_at>maxT)maxT=x.updated_at});
       if(rows.length<40)break;off+=40;
     }
+    // Sicherheitsstopp: ein anderes Handy löscht auf einmal viele meiner Einträge
+    const del=all.filter(x=>x.deleted&&x.collection!=='settings'&&arr(x.collection)&&arr(x.collection).some(i=>String(i.id)===String(x.id)));
+    if(del.length&&!allow&&del.length>=5&&del.length>=localCount()*0.25){
+      guard={type:'pull',n:del.length,total:localCount(),ids:del.map(x=>[x.collection,String(x.id)])};
+      throw new Error('guard');
+    }
+    const changed=apply(all);
     st.last=maxT;save();return changed;
   }
   function viewSafe(){
@@ -131,8 +152,10 @@ const Sync=(()=>{
   async function sync(){
     if(!loggedIn())return;
     if(busy){again=true;return}
+    if(typeof storeFail!=='undefined'&&storeFail){st.err='Speicher auf diesem Handy voll. Der Abgleich ist angehalten, damit nichts verloren geht.';save();return}
     busy=true;
     try{
+      guard=null;
       await push();
       const ch=await pull();
       await push();
@@ -140,11 +163,24 @@ const Sync=(()=>{
       if(ch){if(viewSafe())render();else viewStale=true}
       else if(typeof view!=='undefined'&&view==='more'&&viewSafe())render();
     }catch(e){
-      st.err=e.message==='auth'?'Bitte neu anmelden.':(navigator.onLine===false?'Offline. Es wird später abgeglichen.':'Abgleich nicht möglich. Es wird später erneut versucht.');
+      st.err=e.message==='guard'?(guard.type==='push'?'Abgleich angehalten: Dieses Handy würde '+guard.n+' von '+guard.total+' Einträgen auf dem Server löschen.':'Abgleich angehalten: Ein anderes Handy hat '+guard.n+' Einträge gelöscht.'):e.message==='auth'?'Bitte neu anmelden.':(navigator.onLine===false?'Offline. Es wird später abgeglichen.':'Abgleich nicht möglich. Es wird später erneut versucht.');
       save();
     }
-    busy=false;
+    busy=false;allow=false;
     if(again){again=false;touch()}
+    if(guard&&typeof render==='function'&&viewSafe())render();
+  }
+  // Nutzer entscheidet nach einem Sicherheitsstopp
+  function confirmDeletes(){allow=true;st.err='';sync()}
+  function restoreMissing(){          // lokal fehlende Einträge vom Server zurückholen
+    if(!guard||guard.type!=='push')return;
+    guard.ids.forEach(([c,id])=>{delete st.sh[c][id]});
+    st.last='1970-01-01T00:00:00Z';guard=null;st.err='';save();sync();
+  }
+  function keepLocal(){               // meine Einträge behalten und dem Server wieder mitgeben
+    if(!guard||guard.type!=='pull')return;
+    guard.ids.forEach(([c,id])=>{delete st.sh[c][id]});
+    guard=null;st.err='';save();allow=false;sync();
   }
   function touch(){if(!loggedIn())return;clearTimeout(timer);timer=setTimeout(sync,1500)}
   function start(){
@@ -158,5 +194,5 @@ const Sync=(()=>{
     sync();
   }
   const status=()=>busy?'Abgleich läuft …':st.err?st.err:st.at?'Zuletzt abgeglichen: '+new Date(st.at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr':'Noch nicht abgeglichen';
-  return{start,touch,sync,login,logout,loggedIn,status,mail:()=>st.mail,err:()=>st.err};
+  return{start,touch,sync,login,logout,loggedIn,status,mail:()=>st.mail,err:()=>st.err,guard:()=>guard,confirmDeletes,restoreMissing,keepLocal};
 })();
