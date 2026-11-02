@@ -309,3 +309,10 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 .ratebox input[type=range]{width:100%;accent-color:var(--accent);margin:8px 0 0}
 .rscale{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;padding:0 4px}
 .ratebox .acts button:disabled{opacity:.45}
+
+.warnbox{border:2px solid var(--red);margin-top:12px}
+.warnbox b{color:var(--red)}
+.warnbox p{margin:6px 0 10px;font-size:14px}
+.bar5{height:10px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
+.bar5 i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.bar5 i.hi{background:var(--red)}

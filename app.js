@@ -39,7 +39,11 @@ const K={s:'alltag.shop.v1',x:'alltag.recipes.v1',m:'alltag.meals.v1',c:'alltag.
 // Ihre Daten bleiben unverändert im Speicher und werden in jeder Sicherung mitgenommen.
 const LEGACY={tasks:'alltag.tasks.v1',habits:'alltag.habits.v1',notes:'alltag.notes.v1',reviews:'alltag.reviews.v1',projects:'alltag.projects.v1',rituals:'alltag.rituals.v1'};
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
-const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+// Speichern: schlägt es fehl (Speicher voll), merkt sich die App das und warnt, statt still zu verlieren
+let storeFail=false;const failedKeys=new Set();
+const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));failedKeys.delete(k);storeFail=failedKeys.size>0;return true}catch(e){failedKeys.add(k);storeFail=true;return false}};
+const usedChars=()=>{let n=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);n+=k.length+(localStorage.getItem(k)||'').length}}catch(e){}return n};
+const usedMB=()=>usedChars()*2/1048576;
 const day=(v,def)=>Number.isInteger(v)&&v>=0&&v<=6?v:def;
 const persN=v=>{v=parseInt(v,10);return Number.isFinite(v)?Math.max(1,Math.min(20,v)):2};
 const cleanSettings=o=>({planDay:day(o&&o.planDay,6),shopDay:day(o&&o.shopDay,0),persons:persN(o&&o.persons)});
@@ -145,7 +149,7 @@ function readRecipeFile(text){
     const names=[...new Set(clean.map(r=>r.book).filter(Boolean))];
     recImport={recipes:clean,bookName:names[0]||'',target:''};
     const m=books.find(b=>normName(b.name)===normName(recImport.bookName));
-    recImport.target=m?String(m.id):'new';
+    recImport.target=m?String(m.id):(recImport.bookName?'new':'');
     backupMsg='';
   }catch(e){recImport=null;backupMsg='Diese Datei enthält keine Rezepte, die ich lesen kann.'}
   render();
@@ -195,6 +199,12 @@ function render(){
   wakeLock(needLock());
   const f=fabInfo();$('fab').hidden=!f;if(f){$('fab').innerHTML=ic('plus',28,2.2);$('fab').setAttribute('aria-label',f[1])}
   ({meals:renderMeals,recipes:renderRecipes,rcol:renderCollection,recipe:renderRecipe,cook:renderCook,shop:renderShop,more:renderMore})[view]();
+  const g=typeof Sync!=='undefined'?Sync.guard():null;
+  let top='';
+  if(storeFail)top+=`<div class="card warnbox"><b>Speicher voll: Änderungen werden nicht gespeichert</b><p>Der Speicher dieses Handys für die App ist voll. Lade jetzt unter „Mehr“ eine Sicherung herunter und verkleinere die Fotos. Der Abgleich ist angehalten, damit nichts verloren geht.</p><button class="btn main" data-go="more">Zu „Mehr“</button></div>`;
+  if(g&&g.type==='push')top+=`<div class="card warnbox"><b>Abgleich angehalten</b><p>Dieses Handy würde ${g.n} von ${g.total} Einträgen auf dem Server löschen. Das sieht nach einem Fehler aus. Hole die fehlenden Einträge zurück, wenn du sie nicht gelöscht hast.</p><button class="btn main" data-syrestore="1">Fehlende Einträge vom Server zurückholen</button><button class="btn danger" data-syconfirm="1">Ja, wirklich löschen</button></div>`;
+  if(g&&g.type==='pull')top+=`<div class="card warnbox"><b>Abgleich angehalten</b><p>Ein anderes Handy hat ${g.n} Einträge gelöscht, die hier noch vorhanden sind. Das sieht nach einem Fehler aus.</p><button class="btn main" data-sykeep="1">Meine Einträge behalten</button><button class="btn danger" data-syconfirm="1">Löschungen übernehmen</button></div>`;
+  if(top)$('view').insertAdjacentHTML('afterbegin',top);
   renderBar();
 }
 function go(v){view=v;window.scrollTo(0,0);render()}
@@ -243,6 +253,8 @@ function renderMore(){
   if(Sync.loggedIn())h+=`<div class="bk"><span class="bki">${ic('shield',24)}</span><div><b>Angemeldet als ${esc(Sync.mail()||'Benutzer')}</b><div class="meta" style="font-size:13px;margin-top:2px">${esc(Sync.status())}. Änderungen sehen alle, die mit demselben Zugang angemeldet sind.</div></div></div><button class="btn" data-sysync="1">Jetzt abgleichen</button><button class="btn" data-sylogout="1">Abmelden</button>`;
   else h+=`<p class="hint" style="margin:0 0 8px">Melde dich mit eurem gemeinsamen Zugang an. Danach sehen alle Handys dieselben Daten. Ohne Anmeldung bleibt alles nur auf diesem Handy.</p><form id="syform" autocomplete="on"><input id="sy-mail" type="email" placeholder="E-Mail" autocomplete="username" aria-label="E-Mail"><input id="sy-pw" type="password" placeholder="Passwort" autocomplete="current-password" aria-label="Passwort" style="margin-top:8px"><button type="submit" class="btn main" style="margin-top:10px">Anmelden</button></form><p class="hint" id="sy-msg" style="margin:8px 0 0">${esc(Sync.err())}</p>`;
   h+=`</div>`;
+  const mb=usedMB(),pct=Math.min(100,Math.round(mb/5*100));
+  h+=`<div class="sec"><h2>Speicher</h2></div><div class="card"><b>${mb.toFixed(1).replace('.',',')} MB von etwa 5 MB belegt</b><div class="bar5"><i style="width:${pct}%" class="${pct>70?'hi':''}"></i></div><p class="hint" style="margin:8px 0 0">${pct>70?'Der Speicher wird knapp. Verkleinere die Fotos, sonst kann die App bald nichts mehr speichern.':'Fotos und Cover brauchen den meisten Platz. Safari erlaubt der App nur etwa 5 MB.'}</p><button class="btn" data-shrink="1" style="margin-top:8px">Fotos verkleinern</button></div>`;
   h+=`<div class="sec"><h2>Haushalt</h2></div><div class="card"><div class="meta" style="justify-content:center">Für wie viele Personen kochst du normalerweise?</div><div class="stepper"><button data-pers="-1" aria-label="Weniger">${ic('chevL',20,2)}</button><b>${settings.persons} ${settings.persons===1?'Person':'Personen'}</b><button data-pers="1" aria-label="Mehr">${ic('chevR',20,2)}</button></div><p class="hint" style="margin:6px 0 0;text-align:center">Wochenplan, Kochansicht und Einkaufsliste rechnen Rezepte automatisch auf diese Zahl um. Im Rezept selbst trägst du ein, für wie viele Personen es im Kochbuch steht.</p></div>`;
   h+=`<div class="sec"><h2>Datensicherung</h2></div><div class="card">
     <div class="bk"><span class="bki">${ic('shield',24)}</span><div><b>${backupDue()?'Zeit für eine Sicherung':'Deine Daten sind auf diesem Handy'}</b><div class="meta" style="font-size:13px;margin-top:2px">${lastTxt}. Sichere regelmäßig, damit nichts verloren geht, wenn du das Handy wechselst oder den Browser-Speicher löschst.</div></div></div>
@@ -264,7 +276,7 @@ function renderMore(){
   if(backupText)h+=`<textarea id="btext" readonly aria-label="Sicherung als Text">${esc(backupText)}</textarea>`;
   h+=`</div>`;
   if(hasLegacy())h+=`<div class="sec"><h2>Ausgeblendet</h2></div><div class="card"><p class="hint" style="margin:0">Aufgaben, Gewohnheiten, Notizen, Projekte und Rückblicke sind ausgeblendet. Deine früheren Einträge bleiben erhalten und stecken in jeder Sicherung.</p></div>`;
-  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Essen und Einkauf · Version 8</p>`;
+  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Essen und Einkauf · Version 39</p>`;
   $('view').innerHTML=h;
 }
 
@@ -548,7 +560,7 @@ const ALL_TPL=()=>SAMPLES.concat(MORE_TPL);
 const COURSES=['Vorspeise','Hauptspeise','Beilage','Nachspeise','Backen','Frühstück','Snack'];
 const courseTxt=r=>r.course?(r.course==='Nachspeise'?'Nachspeise Dessert':r.course==='Backen'?'Backen Kuchen Gebäck':r.course):'';
 const guessCourse=n=>/salat|bruschetta/i.test(n)?'Vorspeise':/haferflocken|rührei/i.test(n)?'Frühstück':/abendbrot/i.test(n)?'Snack':'Hauptspeise';
-const CUISINES=['Deutsch','Italienisch','Asiatisch','Mediterran','Griechisch','Orientalisch','Mexikanisch','Amerikanisch','Französisch','Sonstige'];
+const CUISINES=['Deutsch','Italienisch','Asiatisch','Mediterran','Griechisch','Indisch','Österreichisch','Orientalisch','Mexikanisch','Amerikanisch','Französisch','Sonstige'];
 const guessCuisine=n=>/spaghetti|lasagne|carbonara|pesto|bruschetta|penne/i.test(n)?'Italienisch':/curry/i.test(n)?'Asiatisch':/chili|wrap/i.test(n)?'Mexikanisch':/griech/i.test(n)?'Griechisch':/burger/i.test(n)?'Amerikanisch':/quiche/i.test(n)?'Französisch':/suppe|kartoffel|schnitzel|fischst|rahm|pfannkuchen|abendbrot|rührei|haferflocken|nudelsalat|gemüsepfanne/i.test(n)?'Deutsch':'';
 const mkRecipe=([name,portions,ings])=>({id:uid(),name,portions,note:'',cuisine:guessCuisine(name),course:guessCourse(name),bid:null,page:'',ings:ings.map(([n,q,u])=>{const e=ingFind(n);return{id:uid(),name:e?e.n:n,q,u,p:e?e.v===1:false}})});
 let tplSel=new Set();
@@ -689,26 +701,40 @@ function renderRImg(){
 }
 $('r-file').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
-  try{sheetImg=await coverFromFile(f,720);renderRImg()}catch(err){toast('Das Bild konnte nicht geladen werden.',true)}
+  try{sheetImg=await coverFromFile(f,560,0.7);renderRImg()}catch(err){toast('Das Bild konnte nicht geladen werden.',true)}
 });
 function renderCover(){
   $('b-prev').innerHTML=sheetCover?`<img src="${sheetCover}" alt="Cover">`:`<span>${ic('book',34,1.6)}<small>Noch kein Cover</small></span>`;
   $('b-rm').hidden=!sheetCover;$('b-pick').textContent=sheetCover?'Anderes Bild wählen':'Cover-Bild wählen';
 }
-function coverFromFile(f,S=480){
+function shrinkData(url,S,q){
+  return new Promise(res=>{
+    const im=new Image();im.onerror=()=>res(url);
+    im.onload=()=>{const sc=Math.min(1,S/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext('2d').drawImage(im,0,0,c.width,c.height);const n=c.toDataURL('image/jpeg',q);res(n.length<url.length?n:url)};
+    im.src=url;
+  });
+}
+async function shrinkImages(){
+  const before=usedMB();let n=0;
+  for(const r of recipes){if(r.img&&r.img.length>40000){r.img=await shrinkData(r.img,480,0.6);n++}}
+  for(const b of books){if(b.cover&&b.cover.length>30000){b.cover=await shrinkData(b.cover,320,0.6);n++}}
+  saveX();saveB();render();
+  toast(n?`Fotos verkleinert: ${before.toFixed(1).replace('.',',')} MB → ${usedMB().toFixed(1).replace('.',',')} MB`:'Es gab nichts zu verkleinern.',true);
+}
+function coverFromFile(f,S=360,q=0.7){
   return new Promise((res,rej)=>{
     const fr=new FileReader();
     fr.onerror=rej;
     fr.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{
       const sc=Math.min(1,S/Math.max(im.width,im.height)),c=document.createElement('canvas');
       c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
-      c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.8))};im.src=fr.result};
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',q))};im.src=fr.result};
     fr.readAsDataURL(f);
   });
 }
 $('b-file').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
-  try{sheetCover=await coverFromFile(f);renderCover()}catch(err){toast('Das Bild konnte nicht geladen werden.',true)}
+  try{sheetCover=await coverFromFile(f,360,0.7);renderCover()}catch(err){toast('Das Bild konnte nicht geladen werden.',true)}
 });
 $('sugform').addEventListener('submit',e=>{e.preventDefault();const n=sugN,c=new Set(sugCu),mr=sugMin;closeSheet();suggestWeek(n,c,mr)});
 document.addEventListener('submit',async e=>{
@@ -879,6 +905,10 @@ document.addEventListener('click',e=>{
   else if(D.rcancel){recImport=null}
   else if(D.bapply){applyImport();return}
   else if(D.bcancel){pendingImport=null}
+  else if(D.syconfirm){Sync.confirmDeletes();return}
+  else if(D.syrestore){Sync.restoreMissing();return}
+  else if(D.sykeep){Sync.keepLocal();return}
+  else if(D.shrink){shrinkImages();return}
   else if(D.sysync){Sync.sync();toast('Abgleich gestartet.',true);return}
   else if(D.sylogout){Sync.logout();backupMsg='';render();toast('Abgemeldet. Die Daten bleiben auf diesem Handy.',true);return}
   else if(D.pers){setSetting('persons',settings.persons+(+D.pers));return}
