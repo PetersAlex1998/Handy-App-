@@ -5,7 +5,7 @@
 const Sync=(()=>{
   const URL_='https://grfyvfbwvdwhqbpykxep.supabase.co',KEY='sb_publishable_ruigxP7KaBl3W43H2er2aA_N89ml_x_';
   const SK='alltag.sync.v1',COLS=['shop','recipes','meals','books','settings'];
-  const st=(()=>{try{return Object.assign({s:null,last:'1970-01-01T00:00:00Z',sh:{},at:0,err:'',mail:''},JSON.parse(localStorage.getItem(SK))||{})}catch(e){return{s:null,last:'1970-01-01T00:00:00Z',sh:{},at:0,err:'',mail:''}}})();
+  const st=(()=>{try{return Object.assign({s:null,last:'1970-01-01T00:00:00Z',sh:{},at:0,err:'',mail:'',repair:[]},JSON.parse(localStorage.getItem(SK))||{})}catch(e){return{s:null,last:'1970-01-01T00:00:00Z',sh:{},at:0,err:'',mail:'',repair:[]}}})();
   COLS.forEach(c=>{if(!st.sh[c])st.sh[c]={}});
   const save=()=>{try{localStorage.setItem(SK,JSON.stringify(st))}catch(e){}};
   let busy=false,timer=null,again=false,viewStale=false,allow=false,guard=null;
@@ -57,16 +57,22 @@ const Sync=(()=>{
   }
   function logout(){st.s=null;st.err='';st.last='1970-01-01T00:00:00Z';st.sh={};COLS.forEach(c=>st.sh[c]={});st.at=0;save()}
 
+  const isRepair=(c,id)=>(st.repair||[]).some(x=>x[0]===c&&x[1]===String(id));
+  // Bild fehlt im lokalen Bildspeicher: Eintrag erst vom Server holen, damit nicht ein leeres Bild hochgeladen wird
+  function markMissing(keys){
+    keys.forEach(k=>{const c=k[0]==='r'?'recipes':'books',id=k.slice(2);delete st.sh[c][id];if(!isRepair(c,id))st.repair.push([c,id])});
+    st.last='1970-01-01T00:00:00Z';save();
+  }
   function diff(){
     const up=[];
     COLS.forEach(c=>{
       const cur=new Map();
-      items(c).forEach(it=>cur.set(String(it.id),it));
+      items(c).forEach(it=>{if(!isRepair(c,it.id))cur.set(String(it.id),it)});
       cur.forEach((it,id)=>{
         const hs=hash(JSON.stringify(it));
         if(st.sh[c][id]!==hs)up.push({collection:c,id,data:it,deleted:false,_h:hs});
       });
-      Object.keys(st.sh[c]).forEach(id=>{if(!cur.has(id))up.push({collection:c,id,data:null,deleted:true,_h:null})});
+      Object.keys(st.sh[c]).forEach(id=>{if(!cur.has(id)&&!isRepair(c,id))up.push({collection:c,id,data:null,deleted:true,_h:null})});
     });
     return up;
   }
@@ -107,7 +113,7 @@ const Sync=(()=>{
         touched.add(c);changed=true;return;
       }
       const a=arr(c),idx=a.findIndex(x=>String(x.id)===id);
-      if(idx>=0){
+      if(idx>=0&&!isRepair(c,id)){
         const lh=hash(JSON.stringify(a[idx]));
         if(st.sh[c][id]!==undefined&&lh!==st.sh[c][id])return;                  // lokal geändert
       }
@@ -152,12 +158,14 @@ const Sync=(()=>{
   async function sync(){
     if(!loggedIn())return;
     if(busy){again=true;return}
+    if(typeof imagesReady!=='undefined'&&!imagesReady)return;
     if(typeof storeFail!=='undefined'&&storeFail){st.err='Speicher auf diesem Handy voll. Der Abgleich ist angehalten, damit nichts verloren geht.';save();return}
     busy=true;
     try{
       guard=null;
       await push();
       const ch=await pull();
+      if(st.repair&&st.repair.length){st.repair=[];save()}
       await push();
       st.err='';st.at=Date.now();save();
       if(ch){if(viewSafe())render();else viewStale=true}
@@ -194,5 +202,5 @@ const Sync=(()=>{
     sync();
   }
   const status=()=>busy?'Abgleich läuft …':st.err?st.err:st.at?'Zuletzt abgeglichen: '+new Date(st.at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr':'Noch nicht abgeglichen';
-  return{start,touch,sync,login,logout,loggedIn,status,mail:()=>st.mail,err:()=>st.err,guard:()=>guard,confirmDeletes,restoreMissing,keepLocal};
+  return{start,touch,sync,login,logout,loggedIn,status,mail:()=>st.mail,err:()=>st.err,guard:()=>guard,markMissing,confirmDeletes,restoreMissing,keepLocal};
 })();
