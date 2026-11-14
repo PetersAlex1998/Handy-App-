@@ -316,3 +316,5 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 .bar5{height:10px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
 .bar5 i{display:block;height:100%;background:var(--accent);border-radius:99px}
 .bar5 i.hi{background:var(--red)}
+
+.sortrow{margin-top:4px}
