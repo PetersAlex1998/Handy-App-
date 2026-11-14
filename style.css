@@ -318,3 +318,5 @@ details.tbl td{padding:7px 4px;border-bottom:1px solid var(--line);font-variant-
 .bar5 i.hi{background:var(--red)}
 
 .sortrow{margin-top:4px}
+.filtbtn{display:inline-flex;align-items:center;gap:6px}
+.filtpanel{margin:6px 0 4px}
