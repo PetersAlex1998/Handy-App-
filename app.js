@@ -331,7 +331,7 @@ function renderMore(){
   if(backupText)h+=`<textarea id="btext" readonly aria-label="Sicherung als Text">${esc(backupText)}</textarea>`;
   h+=`</div>`;
   if(hasLegacy())h+=`<div class="sec"><h2>Ausgeblendet</h2></div><div class="card"><p class="hint" style="margin:0">Aufgaben, Gewohnheiten, Notizen, Projekte und Rückblicke sind ausgeblendet. Deine früheren Einträge bleiben erhalten und stecken in jeder Sicherung.</p></div>`;
-  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Essen und Einkauf · Version 41</p>`;
+  h+=`<p class="meta" style="justify-content:center;margin-top:26px">Mein Alltag · Essen und Einkauf · Version 42</p>`;
   $('view').innerHTML=h;
 }
 
@@ -423,11 +423,15 @@ function renderRecipes(){
   h+=`</div><div id="rres" hidden></div>`;
   $('view').innerHTML=h;updateRecSearch();
 }
+let recGang='',filtOpen=false;
 function renderCollection(){
   const isCo=String(recCol).startsWith('co:'),isCu0=String(recCol).startsWith('cu:'),isCu=isCu0||isCo,bk=!isCu&&recCol!=='own'?books.find(b=>b.id===+recCol):null;
   if(!isCu&&recCol!=='own'&&!bk){view='recipes';return renderRecipes()}
   const list=isCo?recipes.filter(r=>r.course===recCol.slice(3)):isCu0?recipes.filter(r=>r.cuisine===recCol.slice(3)):bk?recipes.filter(r=>r.bid===bk.id):recipes.filter(r=>!bookOf(r));
-  setTop(isCu?recCol.slice(3):bk?bk.name:'Eigene Rezepte',recCount(list.length),{back:'Rezepte'});
+  const gangs=COURSES.filter(c=>list.some(r=>r.course===c));
+  if(recGang&&!gangs.includes(recGang))recGang='';
+  const shownList=recGang?list.filter(r=>r.course===recGang):list;
+  setTop(isCu?recCol.slice(3):bk?bk.name:'Eigene Rezepte',recGang?recCount(shownList.length)+' · '+recGang:recCount(list.length),{back:'Rezepte'});
   let h='';
   if(bk){
     h+=`<button class="btn main" data-newr="1" style="margin-top:4px">${ic('plus',18,2)} Rezept aus dem Buch hinzufügen</button>`;
@@ -435,7 +439,14 @@ function renderCollection(){
     h+=`<button class="btn" data-tplopen="1" style="margin-top:4px">${ic('book',18,2)} Rezeptvorlagen auswählen</button>`;
   }
   if(!list.length)h+=bk?`<div class="empty"><b>Noch keine Rezepte aus diesem Buch</b>Tippe oben auf den Knopf und trage ein Rezept mit Seitenzahl ein.</div>`:isCu?`<div class="empty"><b>Keine Rezepte</b></div>`:`<div class="empty"><b>Noch keine eigenen Rezepte</b>Wähle Vorlagen aus oder lege ein eigenes Rezept an. Daraus entstehen Wochenplan und Einkaufsliste.</div><button class="btn" data-rsample="1">6 Beispielrezepte laden</button>`;
-  else h+=(list.length>1?sortChips('sortR',[['az','A–Z'],['rating','Beste Bewertung'],['new','Neueste']]):'')+sortRecipes(list).map(recCard).join('');
+  else{
+    if(list.length>1){
+      h+=`<div class="frow sortrow"><button class="chip filtbtn ${recGang?'on':''}" data-filt="1">${ic('sliders',15,2)} Filter${recGang?': '+esc(recGang):''}</button></div>`;
+      if(filtOpen)h+=`<div class="card filtpanel"><div class="lbl" style="margin-top:0">Speisenart</div><div class="frow">${['',...gangs].map(g=>`<button class="chip ${recGang===g?'on':''}" data-gang="${esc(g)}">${g?esc(g)+' <small>'+list.filter(r=>r.course===g).length+'</small>':'Alle'}</button>`).join('')}</div></div>`;
+      h+=sortChips('sortR',[['az','A–Z'],['rating','Beste Bewertung'],['new','Neueste']]);
+    }
+    h+=shownList.length?sortRecipes(shownList).map(recCard).join(''):`<div class="empty"><b>Keine Rezepte</b>Zu dieser Speisenart gibt es hier nichts.</div>`;
+  }
   if(bk)h+=`<button class="btn" data-bedit="${bk.id}" style="margin-top:18px">Kochbuch bearbeiten</button>`;
   $('view').innerHTML=h;
 }
@@ -943,7 +954,7 @@ document.addEventListener('click',e=>{
   if(D.nav){go(D.nav);return}
   if(D.go){go(D.go);return}
   if(D.back){if(view==='cook')go(cookFrom==='recipe'?'recipe':'meals');else if(view==='recipe')go('rcol');else go('recipes');return}
-  if(D.rcol){recCol=D.rcol;go('rcol');return}
+  if(D.rcol){recCol=D.rcol;recGang='';filtOpen=false;go('rcol');return}
   if(D.bnew){openSheet('book');return}
   if(D.bedit){openSheet('book',D.bedit);return}
   if(D.cook){const[i,p]=D.cook.split('|');cookId=+i;cookPort=+p||2;cookFrom=view==='meals'?'meals':'recipe';cookDone=new Set();go('cook');return}
@@ -971,6 +982,8 @@ document.addEventListener('click',e=>{
   else if(D.shave){destructive('Als vorhanden abgehakt',()=>{shop=shop.filter(t=>t.id!=D.shave);saveS()});return}
   else if(D.smiss){const x=shop.find(t=>t.id==D.smiss);if(x){x.p=false;saveS()}}
   else if(D.shaveall){destructive('Alle als vorhanden abgehakt',()=>{shop=shop.filter(t=>t.p!==true||t.done);saveS()});return}
+  else if(D.filt){filtOpen=!filtOpen}
+  else if(D.gang!==undefined){recGang=D.gang}
   else if(D.sort){const[k,v]=D.sort.split('|');if(k==='sortB'||k==='sortR'){settings[k]=v;saveC()}}
   else if(D.scat!==undefined){shopCatPick=D.scat}
   else if(D.ssug){const inp=$('sname'),txt=inp.value.trim(),pr=parseShopText(txt);inp.value=txt.slice(0,txt.length-pr.name.length)+D.ssug;updateShopSug();inp.focus();return}
